@@ -28,6 +28,8 @@ extern crate clap;
 #[macro_use]
 extern crate error_chain;
 extern crate json;
+#[macro_use]
+extern crate nom;
 extern crate reqwest;
 extern crate rusqlite;
 
@@ -98,6 +100,9 @@ impl Explorer {
                     if acs_var.split("_").count() != 2 {
                         continue;
                     }
+                    // TODO parse an indicator var
+                    let label = acs_var["label"];
+                    let concept = acs_var["concept"];
 
                     count += 1;
                 }
@@ -111,41 +116,78 @@ impl Explorer {
     }
 }
 
+named!(parse_variable<&[u8], VariableCode>,
+    do_parse!(
+        prefix: parse_prefix >>
+        id: parse_id >>
+        suffix: parse_suffix >>
 
-struct VarRecord {
+        (VariableCode {
+            prefix: prefix,
+            variable_id: id,
+            suffix: suffix,
+        })
+    )
+);
+
+named!(parse_prefix<&[u8], VariablePrefix>,
+    do_parse!(
+        prefix: alt!(tag!("B") | tag!("C")) >>
+
+        (match prefix {
+            b"B" => VariablePrefix::B,
+            b"C" => VariablePrefix::C,
+        }
+        )
+    )
+);
+
+named!(parse_id<&[u8], String>,
+    map_res!(
+        take!(5),
+        |id| String::from_utf8(id.to_string())
+    )
+);
+
+named!(parse_suffix<&[u8], String>,
+    map_res!(
+        take_until!(b"_"),
+        |id| String::from_utf8(id.to_string())
+    )
+);
+
+// this is what gets stored in the database
+// Not for public access?
+struct VariableRecord {
+    variable: Variable,
+    estimate: Estimate,
+    year: usize, // I just use one big table, denormalized
 }
 
-pub mod acs {
-    pub struct Indicator {
-        prefix: IndicatorPrefix,
-        id: usize,
-        suffix: char, // should be limited to upper-case letters?
-    }
-
-    pub struct Table {
-        indicator: Indicator,
-        estimate: Estimate,
-        year: usize,
-    }
-
-    pub enum IndicatorPrefix {
-        B,
-        C,
-    }
-
-    pub enum Estimate {
-        OneYear,
-        FiveYear,
-    }
-
-    pub enum VarType {
-        MarginOfError,
-        Value,
-    }
+pub struct Variable {
+    label: String, // Encodes Hierarchy
+    indicator: Indicator,
 }
 
-/// Current Population Survey
-pub mod cps {
+pub struct VariableCode {
+    prefix: IndicatorPrefix,
+    variable_id: String,
+    suffix: String, // should be limited to upper-case letters?
+}
+
+pub enum VariablePrefix {
+    B,
+    C,
+}
+
+pub enum Estimate {
+    OneYear,
+    FiveYear,
+}
+
+pub enum VariableType {
+    MarginOfError,
+    Value,
 }
 
 #[cfg(test)]
