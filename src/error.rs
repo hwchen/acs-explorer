@@ -7,6 +7,5 @@ error_chain! {
         Reqwest(reqwest::Error);
         ReqwestUrl(reqwest::UrlError);
         Rusqlite(rusqlite::Error);
-
     }
 }
