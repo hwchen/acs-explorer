@@ -92,25 +92,33 @@ impl Explorer {
         if let StatusCode::Ok =  *resp.status() {
             let mut buf = String::new();
             resp.read_to_string(&mut buf)?;
+
             let data = json::parse(&buf)
                 .chain_err(|| "error parsing json response")?;
 
             let mut count = 0;
             for (acs_var, acs_info) in data["variables"].entries() {
-                let acs_var = acs_var.to_string();
+                let acs_var_str = acs_var.to_string();
                 // Look for variable names (which have a '_' in them)
-                if acs_var.split("_").count() != 2 {
+                if acs_var_str.split("_").count() != 2 {
                     continue;
                 }
 
                 // currently panic on incomplete.
                 // to_full_reulst() doesn't, but returns IError which
                 // doesn't implement Error
-                let acs_var_bytes = acs_var.as_bytes();
-                let variable_code = parse_variable_code(acs_var_bytes)
+                let variable_code = parse_variable_code(acs_var_str.as_bytes())
                     .to_result()
-                    .chain_err(|| format!("Error parsing variable {}", acs_var))?;
-                println!("{:?}", variable_code);
+                    .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
+                // TODO rename vars to to include
+                // table and columns, with labels.
+                // Think about setting up 2 tables,
+                // one for tables and one for col
+                let variable = Variable {
+                    variable_code: variable_code,
+                    label: acs_info["label"].to_string(),
+                };
+                println!("{:?}", variable);
                 // TODO parse an indicator var
                 //let label = acs_var["label"];
                 //let concept = acs_var["concept"];
@@ -162,8 +170,7 @@ named!(parse_prefix<&[u8], VariablePrefix>,
             b"B" => VariablePrefix::B,
             b"C" => VariablePrefix::C,
             _ => VariablePrefix::B, // TODO Fix error handling later
-        }
-        )
+        })
     )
 );
 
