@@ -1,6 +1,6 @@
 use error::*;
 use json;
-use nom::digit;
+use nom::{alpha, digit, rest, space};
 use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str;
+
+// TODO split fetch from processing of data? for dev, this wil
+// reduce churn, reading from files instead of from api.
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -52,7 +55,7 @@ impl Explorer {
         &self,
         year: usize,
         acs_est: &str,
-        table_map: &mut HashMap<String, String>,
+        table_map: &mut HashMap<TableCode, String>,
         ) -> Result<()>
     {
         let mut year = year.to_string();
@@ -66,8 +69,8 @@ impl Explorer {
         if let StatusCode::Ok =  *resp.status() {
             let mut buf = String::new();
             resp.read_to_string(&mut buf)?;
-            println!("{}", buf);
-            ::std::process::exit(0);
+            //println!("{}", buf);
+            //::std::process::exit(0);
 
             let data = json::parse(&buf)
                 .chain_err(|| "error parsing json response")?;
@@ -86,21 +89,25 @@ impl Explorer {
                 let variable_code = parse_variable_code(acs_var_str.as_bytes())
                     .to_result()
                     .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
-                // TODO rename vars to to include
-                // table and columns, with labels.
-                // Think about setting up 2 tables,
+                // TODO Think about setting up 2 tables,
                 // one for tables and one for col
                 let variable = Variable {
-                    variable_code: variable_code,
+                    code: variable_code,
                     label: acs_info["label"].to_string(),
                 };
                 //println!("{:?}", variable);
 
-                //table_map.get_mut(
+                let table_str = acs_info["concept"].to_string();
+                let table_record = parse_table_record(table_str.as_bytes())
+                    .to_result()
+                    .chain_err(|| format!("Error parsing table str {}", table_str))?;
 
-                // TODO parse an indicator var
-                //let label = acs_var["label"];
-                //let concept = acs_var["concept"];
+                if let None = table_map.get(&table_record.code) {
+                    table_map.insert(
+                        table_record.code,
+                        table_record.label,
+                    );
+                };
 
                 count += 1;
             }
@@ -117,54 +124,77 @@ impl Explorer {
 
 named!(parse_variable_code<&[u8], VariableCode>,
     do_parse!(
-        prefix: parse_prefix >>
-        table_id: parse_table_id >>
-        suffix: parse_suffix >>
+        table_code: parse_table_code >>
         tag!("_") >>
         column_id: parse_column_id >>
         var_type: parse_var_type >>
 
-        ({
-            let suffix = match &suffix[..] {
-                "" => None,
-                _ => Some(suffix),
-            };
-
-            VariableCode {
-                prefix: prefix,
-                table_id: table_id,
-                suffix: suffix,
+        (VariableCode {
+                table_code: table_code,
                 column_id: column_id,
                 var_type: var_type,
-            }
         })
     )
 );
 
-named!(parse_prefix<&[u8], VariablePrefix>,
+named!(parse_table_record<&[u8], TableRecord>,
+    do_parse!(
+        table_code: parse_table_code >>
+        tag!(".") >>
+        space >>
+        label: map_res!(
+            rest,
+            |id| str::from_utf8(id).map(|s| s.to_owned())
+            ) >>
+
+        (TableRecord {
+            code: table_code,
+            label: label,
+        })
+    )
+);
+
+named!(parse_table_code<&[u8], TableCode>,
+    do_parse!(
+        prefix: parse_prefix >>
+        table_id: parse_table_id >>
+        suffix: parse_suffix >>
+
+        (TableCode {
+                prefix: prefix,
+                table_id: table_id,
+                suffix: suffix,
+        })
+    )
+);
+
+named!(parse_prefix<&[u8], TablePrefix>,
     do_parse!(
         prefix: alt!(tag!("B") | tag!("C")) >>
 
         (match prefix {
-            b"B" => VariablePrefix::B,
-            b"C" => VariablePrefix::C,
-            _ => VariablePrefix::B, // TODO Fix error handling later
+            b"B" => TablePrefix::B,
+            b"C" => TablePrefix::C,
+            _ => TablePrefix::B, // TODO Fix error handling later
         })
     )
 );
 
 named!(parse_table_id<&[u8], String>,
     map_res!(
-        take!(5),
+        digit,
         |id| str::from_utf8(id).map(|s| s.to_owned())
     )
 );
 
-named!(parse_suffix<&[u8], String>,
-    map_res!(
-        take_until!(&b"_"[..]),
-        |id| str::from_utf8(id).map(|s| s.to_owned())
-    )
+named!(parse_suffix<&[u8], Option<String> >,
+    opt!(map_res!(
+        alpha,
+        |suffix| {
+            str::from_utf8(suffix)
+                .map(|s| s.to_owned())
+        }
+    ))
 );
 
 named!(parse_column_id<&[u8], String>,
@@ -199,20 +229,31 @@ struct VariableRecord {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
     label: String, // Encodes Hierarchy
-    variable_code: VariableCode,
+    code: VariableCode,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCode {
-    prefix: VariablePrefix,
-    table_id: String,
-    suffix: Option<String>, // should be limited to upper-case letters?
+    table_code: TableCode,
     column_id: String,
     var_type: VariableType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum VariablePrefix {
+pub struct TableRecord {
+    code: TableCode,
+    label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TableCode {
+    prefix: TablePrefix,
+    table_id: String,
+    suffix: Option<String>, // should be limited to upper-case letters?
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TablePrefix {
     B,
     C,
 }
@@ -238,14 +279,34 @@ mod tests {
     fn test_parse_variable_code() {
         let input = "B20005E_045M";
         let expected = VariableCode {
-            prefix: VariablePrefix::B,
-            table_id: "20005".to_owned(),
-            suffix: Some("E".to_owned()),
+            table_code: TableCode {
+                prefix: TablePrefix::B,
+                table_id: "20005".to_owned(),
+                suffix: Some("E".to_owned()),
+            },
             column_id: "045".to_owned(),
             var_type: VariableType::MarginOfError,
         };
         assert_eq!(
             parse_variable_code(input.as_bytes()),
+            IResult::Done(&b""[..], expected)
+        );
+    }
+
+    #[test]
+    fn test_parse_table_record() {
+        let input = "B24126.  Detailed Occupation for the Full-Time, Year-Round Civilian Employed Female Population 16 Years and Over";
+        let expected = TableRecord {
+            code: TableCode {
+                prefix: TablePrefix::B,
+                table_id: "24126".to_owned(),
+                suffix: None,
+            },
+            label: "Detailed Occupation for the Full-Time, Year-Round Civilian Employed Female Population 16 Years and Over".to_owned(),
+        };
+
+        assert_eq!(
+            parse_table_record(input.as_bytes()),
             IResult::Done(&b""[..], expected)
         );
     }

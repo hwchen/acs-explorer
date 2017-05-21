@@ -80,7 +80,12 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    explorer.refresh_acs_vars(2009, "acs5/", &mut ::std::collections::HashMap::new())?;
+    let mut table_map = ::std::collections::HashMap::new();
+    explorer.refresh_acs_vars(2009, "acs5/", &mut table_map)?;
+
+    for entry in table_map.iter() {
+        println!("{:?}", entry);
+    }
 
     Ok(())
 }
