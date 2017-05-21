@@ -46,7 +46,7 @@ impl Explorer {
         // TODO un-hardcode
         for year in 2009..2015 {
             for acs_est in &[OneYear, FiveYear] {
-                self.refresh_acs_combination(year, acs_est, &mut table_map)?;
+                self.refresh_acs_combination(year, &acs_est, &mut table_map)?;
             }
         }
 
@@ -61,6 +61,22 @@ impl Explorer {
         ) -> Result<()>
     {
         // TODO check year
+        let acs_vars_data = self.fetch_acs_combination(year, acs_est)?;
+        self.process_acs_vars_data(
+            year,
+            acs_est,
+            &acs_vars_data,
+            table_map,
+        )
+    }
+
+    fn fetch_acs_combination(
+        &self,
+        year: usize,
+        acs_est: &Estimate
+        ) -> Result<String>
+    {
+        // TODO check year
         let mut year = year.to_string();
         year.push_str("/");
 
@@ -69,57 +85,66 @@ impl Explorer {
 
         let mut resp = self.http_client.get(url).send()?;
 
+        let mut buf = String::new();
+
         if let StatusCode::Ok =  *resp.status() {
-            let mut buf = String::new();
             resp.read_to_string(&mut buf)?;
-            //println!("{}", buf);
-            //::std::process::exit(0);
+            Ok(buf)
+        } else {
+            Err(format!("Error fetching from census api: {}", resp.status()).into())
+        }
+    }
 
-            let data = json::parse(&buf)
-                .chain_err(|| "error parsing json response")?;
+    // TODO at end of dev, make this private
+    pub fn process_acs_vars_data(
+        &self,
+        year: usize,
+        estimate: &Estimate,
+        vars_data: &str,
+        table_map: &mut HashMap<TableCode, String>,
+        ) -> Result<()>
+    {
+        let data = json::parse(&vars_data)
+            .chain_err(|| "error parsing json response")?;
 
-            let mut count = 0;
-            for (acs_var, acs_info) in data["variables"].entries() {
-                let acs_var_str = acs_var.to_string();
-                // Look for variable names (which have a '_' in them)
-                if acs_var_str.split("_").count() != 2 {
-                    continue;
-                }
-
-                // currently panic on incomplete.
-                // to_full_result() doesn't, but returns IError which
-                // doesn't implement Error
-                let variable_code = parse_variable_code(acs_var_str.as_bytes())
-                    .to_result()
-                    .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
-                // TODO Think about setting up 2 tables,
-                // one for tables and one for col
-                let variable = Variable {
-                    code: variable_code,
-                    label: acs_info["label"].to_string(),
-                };
-                //println!("{:?}", variable);
-
-                let table_str = acs_info["concept"].to_string();
-                let table_record = parse_table_record(table_str.as_bytes())
-                    .to_result()
-                    .chain_err(|| format!("Error parsing table str {}", table_str))?;
-
-                if let None = table_map.get(&table_record.code) {
-                    table_map.insert(
-                        table_record.code,
-                        table_record.label,
-                    );
-                };
-
-                count += 1;
+        let mut count = 0;
+        for (acs_var, acs_info) in data["variables"].entries() {
+            let acs_var_str = acs_var.to_string();
+            // Look for variable names (which have a '_' in them)
+            if acs_var_str.split("_").count() != 2 {
+                continue;
             }
 
-            println!("{}", count);
+            // currently panic on incomplete.
+            // to_full_result() doesn't, but returns IError which
+            // doesn't implement Error
+            let variable_code = parse_variable_code(acs_var_str.as_bytes())
+                .to_result()
+                .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
+            // TODO Think about setting up 2 tables,
+            // one for tables and one for col
+            let variable = Variable {
+                code: variable_code,
+                label: acs_info["label"].to_string(),
+            };
+            //println!("{:?}", variable);
 
-        } else {
-            println!("No vars for {}, {}", year, acs_est);
+            let table_str = acs_info["concept"].to_string();
+            let table_record = parse_table_record(table_str.as_bytes())
+                .to_result()
+                .chain_err(|| format!("Error parsing table str {}", table_str))?;
+
+            if let None = table_map.get(&table_record.code) {
+                table_map.insert(
+                    table_record.code,
+                    table_record.label,
+                );
+            };
+
+            count += 1;
         }
+
+        println!("{}", count);
 
         Ok(())
     }
