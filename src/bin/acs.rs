@@ -4,7 +4,7 @@ use acs_explorer::error::*;
 use acs_explorer::Explorer;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 // file name for sqlite db acs vars store
 const DB_FILE: &str = "vars.db";
@@ -42,7 +42,7 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    explorer.refresh_acs_vars(2009, "acs5/")?;
+    explorer.refresh_acs_vars(2009, "acs5/", &mut ::std::collections::HashMap::new())?;
 
     Ok(())
 }

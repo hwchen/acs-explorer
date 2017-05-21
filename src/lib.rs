@@ -39,6 +39,7 @@ pub mod error;
 use error::*;
 use nom::digit;
 use reqwest::{StatusCode, Url};
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str;
@@ -70,17 +71,25 @@ impl Explorer {
     }
 
     pub fn refresh(&self) -> Result<()> {
+        let mut table_map = HashMap::new();
+
         // TODO un-hardcode
         for year in 2009..2015 {
             for acs_est in &["acs1/", "acs5/"] {
-                self.refresh_acs_vars(year, acs_est)?;
+                self.refresh_acs_vars(year, acs_est, &mut table_map)?;
             }
         }
 
         Ok(())
     }
 
-    pub fn refresh_acs_vars(&self, year: usize, acs_est: &str) -> Result<()> {
+    pub fn refresh_acs_vars(
+        &self,
+        year: usize,
+        acs_est: &str,
+        table_map: &mut HashMap<String, String>,
+        ) -> Result<()>
+    {
         let mut year = year.to_string();
         year.push_str("/");
 
@@ -92,6 +101,8 @@ impl Explorer {
         if let StatusCode::Ok =  *resp.status() {
             let mut buf = String::new();
             resp.read_to_string(&mut buf)?;
+            println!("{}", buf);
+            ::std::process::exit(0);
 
             let data = json::parse(&buf)
                 .chain_err(|| "error parsing json response")?;
@@ -105,7 +116,7 @@ impl Explorer {
                 }
 
                 // currently panic on incomplete.
-                // to_full_reulst() doesn't, but returns IError which
+                // to_full_result() doesn't, but returns IError which
                 // doesn't implement Error
                 let variable_code = parse_variable_code(acs_var_str.as_bytes())
                     .to_result()
@@ -118,7 +129,10 @@ impl Explorer {
                     variable_code: variable_code,
                     label: acs_info["label"].to_string(),
                 };
-                println!("{:?}", variable);
+                //println!("{:?}", variable);
+
+                //table_map.get_mut(
+
                 // TODO parse an indicator var
                 //let label = acs_var["label"];
                 //let concept = acs_var["concept"];
