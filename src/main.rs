@@ -39,6 +39,8 @@ mod explorer;
 
 use error::*;
 use explorer::Explorer;
+// temp
+use explorer::Estimate;
 
 use std::env;
 use std::fs;
@@ -81,7 +83,7 @@ fn run() -> Result<()> {
     ).unwrap();
 
     let mut table_map = ::std::collections::HashMap::new();
-    explorer.refresh_acs_vars(2009, "acs5/", &mut table_map)?;
+    explorer.refresh_acs_combination(2009, &Estimate::FiveYear, &mut table_map)?;
 
     for entry in table_map.iter() {
         println!("{:?}", entry);

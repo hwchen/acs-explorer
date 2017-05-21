@@ -5,6 +5,7 @@ use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
 use std::collections::HashMap;
+use std::fmt;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str;
@@ -39,30 +40,32 @@ impl Explorer {
     }
 
     pub fn refresh(&self) -> Result<()> {
+        use Estimate::*;
         let mut table_map = HashMap::new();
 
         // TODO un-hardcode
         for year in 2009..2015 {
-            for acs_est in &["acs1/", "acs5/"] {
-                self.refresh_acs_vars(year, acs_est, &mut table_map)?;
+            for acs_est in &[OneYear, FiveYear] {
+                self.refresh_acs_combination(year, acs_est, &mut table_map)?;
             }
         }
 
         Ok(())
     }
 
-    pub fn refresh_acs_vars(
+    pub fn refresh_acs_combination(
         &self,
         year: usize,
-        acs_est: &str,
+        acs_est: &Estimate,
         table_map: &mut HashMap<TableCode, String>,
         ) -> Result<()>
     {
+        // TODO check year
         let mut year = year.to_string();
         year.push_str("/");
 
         let url = Url::parse(CENSUS_URL_BASE)?;
-        let url = url.join(&year)?.join(&acs_est)?.join(VARS_URL)?;
+        let url = url.join(&year)?.join(acs_est.url_frag())?.join(VARS_URL)?;
 
         let mut resp = self.http_client.get(url).send()?;
 
@@ -259,15 +262,36 @@ pub enum TablePrefix {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum VariableType {
+    MarginOfError,
+    Value,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Estimate {
     OneYear,
     FiveYear,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum VariableType {
-    MarginOfError,
-    Value,
+impl Estimate {
+    pub fn url_frag(&self) -> &str {
+        const ACS_1_FRAG: &str = "acs1/";
+        const ACS_5_FRAG: &str = "acs5/";
+
+        match *self {
+            Estimate::OneYear => ACS_1_FRAG,
+            Estimate::FiveYear => ACS_5_FRAG,
+        }
+    }
+}
+
+impl fmt::Display for Estimate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Estimate::OneYear => write!(f, "ACS 1-year estimate"),
+            Estimate::FiveYear => write!(f, "ACS 5-year estimate"),
+        }
+    }
 }
 
 #[cfg(test)]
