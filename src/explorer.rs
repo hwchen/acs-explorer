@@ -1,44 +1,9 @@
-#![recursion_limit = "1024"]
-
-/// ACS Explorer
-///
-/// Basically, using census reporter is too slow and doesn't tell
-/// if a particular table is actually available in the census api.
-///
-/// The cli will let you check information about a table ID:
-///
-/// - whether there exists a B or C version
-/// - what years and acs estimate (1,5) it exists in
-/// - variables for that table.
-/// - get data for that table (just curl)
-///
-/// Features:
-/// - stores variables info in file (or sqlite? too heavy?)
-/// - refresh variables data on command and prompt first time
-/// - stored data goes into .census folder, or user-defined. (first-time prompt)
-/// - read acs key from env var.
-/// - fuzzy finder for tables
-/// - refresh should have
-///
-/// For example, these endpoints:
-///
-/// curl -v "https://api.census.gov/data/2015/acs5/variables.json" >
-
-extern crate clap;
-#[macro_use]
-extern crate error_chain;
-extern crate json;
-#[macro_use]
-extern crate nom;
-extern crate reqwest;
-extern crate rusqlite;
-
-pub mod census;
-pub mod error;
-
 use error::*;
+use json;
 use nom::digit;
+use reqwest;
 use reqwest::{StatusCode, Url};
+use rusqlite;
 use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
