@@ -33,6 +33,7 @@ extern crate nom;
 extern crate reqwest;
 extern crate rusqlite;
 
+mod acs;
 mod census;
 mod error;
 mod explorer;
@@ -40,7 +41,7 @@ mod explorer;
 use error::*;
 use explorer::Explorer;
 // temp
-use explorer::Estimate;
+use acs::Estimate;
 
 use std::env;
 use std::fs;
@@ -92,7 +93,7 @@ fn run() -> Result<()> {
     let mut f = File::open("/home/hwchen/projects/rust/acs-explorer/temp-vars.json")?;
     let mut buf = String::new();
     f.read_to_string(&mut buf)?;
-    explorer.process_acs_vars_data(2009, &Estimate::FiveYear, &buf, &mut table_map);
+    explorer.process_acs_vars_data(2009, &Estimate::FiveYear, &buf, &mut table_map)?;
     //----------------------------------------------
 
     for entry in table_map.iter() {
