@@ -1,3 +1,4 @@
+use error::*;
 use nom::{alpha, digit, rest, space, IResult};
 use std::fmt;
 use std::str;
@@ -85,17 +86,23 @@ named!(parse_column_id<&[u8], String>,
 );
 
 named!(parse_var_type<&[u8], VariableType>,
-    do_parse!(
-        prefix: alt!(tag!("E") | tag!("M")) >>
-
-        (match prefix {
-            b"E" => VariableType::Value,
-            b"M" => VariableType::MarginOfError,
-            _ => VariableType::Value, // TODO Fix error handling later
-        }
-        )
+    map_res!(
+        alt!(tag!("E") | tag!("M")),
+        match_var_type
     )
 );
+
+fn match_var_type(input: &[u8]) -> Result<VariableType> {
+    match input {
+        b"E" => Ok(VariableType::Value),
+        b"M" => Ok(VariableType::MarginOfError),
+        v => {
+            let v = str::from_utf8(v)
+                .chain_err(|| "non utf8 value for VariableType")?;
+            Err(format!("Unrecognized value for VariableType: {}", v).into())
+        }
+    }
+}
 
 // this is what gets stored in the database
 // Not for public access?
