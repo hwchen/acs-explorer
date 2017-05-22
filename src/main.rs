@@ -83,22 +83,17 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    let mut table_map = ::std::collections::HashMap::new();
-    //explorer.refresh_acs_combination(2009, &Estimate::FiveYear, &mut table_map)?;
+    explorer.refresh(2009..2010, &[Estimate::FiveYear], true)?;
 
     //tmp just reading from file instead of fetching
     //----------------------------------------------
-    use std::fs::File;
-    use std::io::Read;
-    let mut f = File::open("/home/hwchen/projects/rust/acs-explorer/temp-vars.json")?;
-    let mut buf = String::new();
-    f.read_to_string(&mut buf)?;
-    explorer.process_acs_vars_data(2009, &Estimate::FiveYear, &buf, &mut table_map)?;
+    //use std::fs::File;
+    //use std::io::Read;
+    //let mut f = File::open("/home/hwchen/projects/rust/acs-explorer/temp-vars.json")?;
+    //let mut buf = String::new();
+    //f.read_to_string(&mut buf)?;
+    //explorer.process_acs_vars_data(2009, &Estimate::FiveYear, &buf, &mut table_map)?;
     //----------------------------------------------
-
-    for entry in table_map.iter() {
-        println!("{:?}", entry);
-    }
 
     Ok(())
 }

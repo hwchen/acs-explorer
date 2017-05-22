@@ -8,6 +8,7 @@ use rusqlite;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
+use std::ops::Range;
 use std::path::PathBuf;
 use std::str;
 
@@ -40,14 +41,37 @@ impl Explorer {
         })
     }
 
-    pub fn refresh(&self) -> Result<()> {
+    pub fn refresh(
+        &self,
+        years: Range<usize>,
+        acs_estimates: &[Estimate],
+        dry_run: bool
+        ) -> Result<()>
+    {
         use Estimate::*;
+
+        // Prep db
+        self.db_client.execute(
+            "CREATE TABLE IF NOT EXISTS acs_tables (
+                id INTEGER PRIMARY KEY,
+                prefix TEXT NOT NULL,
+                table_id TEXT NOT NULL,
+                suffix TEXT,
+                label TEXT NOT NULL
+            )", &[])?;
+
         let mut table_map = HashMap::new();
 
         // TODO un-hardcode
-        for year in 2009..2015 {
-            for acs_est in &[OneYear, FiveYear] {
-                self.refresh_acs_combination(year, &acs_est, &mut table_map)?;
+        if !dry_run {
+            for year in years {
+                for acs_est in acs_estimates {
+                    self.refresh_acs_combination(
+                        year,
+                        &acs_est,
+                        &mut table_map,
+                    )?;
+                }
             }
         }
 
