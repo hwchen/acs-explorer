@@ -71,11 +71,27 @@ impl Explorer {
             }
         }
 
-       // for (table_record, label) in table_map.iter() {
-       //     self.db_client.execute(
-       //     "INSERT INTO acs_tables (
-       //     "
-       // }
+        for (code, label) in table_map.iter() {
+            self.db_client.execute(
+                "INSERT INTO acs_tables (
+                    prefix,
+                    table_id,
+                    suffix,
+                    label
+                ) VALUES (
+                    ?1,
+                    ?2,
+                    ?3,
+                    ?4,
+                )",
+                &[
+                    &code.prefix,
+                    &code.table_id,
+                    &code.suffix,
+                    &label,
+                ],
+            ).unwrap();
+        }
 
         Ok(())
     }

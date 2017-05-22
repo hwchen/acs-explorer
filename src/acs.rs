@@ -134,9 +134,9 @@ pub struct TableRecord {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TableCode {
-    prefix: TablePrefix,
-    table_id: String,
-    suffix: Option<String>, // should be limited to upper-case letters?
+    pub prefix: TablePrefix,
+    pub table_id: String,
+    pub suffix: Option<String>, // should be limited to upper-case letters?
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
