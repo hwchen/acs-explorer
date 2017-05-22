@@ -45,7 +45,6 @@ impl Explorer {
         &self,
         years: Range<usize>,
         acs_estimates: &[Estimate],
-        dry_run: bool
         ) -> Result<()>
     {
         use Estimate::*;
@@ -53,7 +52,7 @@ impl Explorer {
         // Prep db
         self.db_client.execute(
             "CREATE TABLE IF NOT EXISTS acs_tables (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY ASC,
                 prefix TEXT NOT NULL,
                 table_id TEXT NOT NULL,
                 suffix TEXT,
@@ -62,18 +61,21 @@ impl Explorer {
 
         let mut table_map = HashMap::new();
 
-        // TODO un-hardcode
-        if !dry_run {
-            for year in years {
-                for acs_est in acs_estimates {
-                    self.refresh_acs_combination(
-                        year,
-                        &acs_est,
-                        &mut table_map,
-                    )?;
-                }
+        for year in years {
+            for acs_est in acs_estimates {
+                self.refresh_acs_combination(
+                    year,
+                    &acs_est,
+                    &mut table_map,
+                )?;
             }
         }
+
+       // for (table_record, label) in table_map.iter() {
+       //     self.db_client.execute(
+       //     "INSERT INTO acs_tables (
+       //     "
+       // }
 
         Ok(())
     }

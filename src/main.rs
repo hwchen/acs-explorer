@@ -83,7 +83,7 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    explorer.refresh(2009..2010, &[Estimate::FiveYear], true)?;
+    explorer.refresh(2009..2010, &[Estimate::FiveYear])?;
 
     //tmp just reading from file instead of fetching
     //----------------------------------------------
