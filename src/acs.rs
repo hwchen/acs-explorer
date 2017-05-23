@@ -123,9 +123,9 @@ pub struct Variable {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCode {
-    table_code: TableCode,
-    column_id: String,
-    var_type: VariableType,
+    pub table_code: TableCode,
+    pub column_id: String,
+    pub var_type: VariableType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -168,6 +168,21 @@ pub enum VariableType {
     Value,
 }
 
+impl ToSql for VariableType {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
+        Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+impl ToString for VariableType {
+    fn to_string(&self) -> String {
+        match *self {
+            VariableType::MarginOfError => "M".to_owned(),
+            VariableType::Value => "E".to_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Estimate {
     OneYear,
@@ -194,6 +209,22 @@ impl fmt::Display for Estimate {
         }
     }
 }
+
+impl ToSql for Estimate {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
+        Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+//impl ToString for Estimate {
+//    fn to_string(&self) -> String {
+//        match *self {
+//            Estimate::OneYear => "acs1".to_owned(),
+//            Estimate::FiveYear => "acs5".to_owned(),
+//        }
+//    }
+//}
+
 
 #[cfg(test)]
 mod tests {

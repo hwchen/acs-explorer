@@ -60,9 +60,20 @@ impl Explorer {
                 suffix TEXT,
                 label TEXT NOT NULL
             );
-
+            DROP TABLE IF EXISTS acs_vars;
+            CREATE TABLE acs_vars (
+                id INTEGER PRIMARY KEY ASC,
+                prefix TEXT NOT NULL,
+                table_id TEXT NOT NULL,
+                suffix TEXT,
+                column_id TEXT NOT NULL,
+                var_type TEXT NOT NULL,
+                estimate TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                label TEXT NOT NULL
+            );
             ",
-        )?;
+        ).chain_err(|| "Error prepping db")?;
 
         let mut table_map = HashMap::new();
 
@@ -89,7 +100,7 @@ impl Explorer {
                     ?3,
                     ?4
                 )"
-            )?;
+            ).chain_err(|| "Error preparing acs_tables insert")?;
 
             insert.execute(
                 &[
@@ -98,7 +109,7 @@ impl Explorer {
                     &code.suffix,
                     label,
                 ]
-            )?;
+            ).chain_err(|| "Error executing acs_tables insert")?;
         }
 
         Ok(())
@@ -169,17 +180,49 @@ impl Explorer {
             // currently panic on incomplete.
             // to_full_result() doesn't, but returns IError which
             // doesn't implement Error
-            let variable_code = parse_variable_code(acs_var_str.as_bytes())
+            let code = parse_variable_code(acs_var_str.as_bytes())
                 .to_result()
                 .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
-            // TODO Think about setting up 2 tables,
-            // one for tables and one for col
-            let variable = Variable {
-                code: variable_code,
-                label: acs_info["label"].to_string(),
-            };
-            //println!("{:?}", variable);
 
+            // Write variable
+            //TODO Should I move prep outside loop? It currently uses
+            // a cached handle anyways.
+            let mut insert = self.db_client.prepare_cached(
+                "INSERT INTO acs_vars (
+                    prefix,
+                    table_id,
+                    suffix,
+                    column_id,
+                    var_type,
+                    estimate,
+                    year,
+                    label
+                ) VALUES (
+                    ?1,
+                    ?2,
+                    ?3,
+                    ?4,
+                    ?5,
+                    ?6,
+                    ?7,
+                    ?8
+                )"
+            ).chain_err(|| "Error preparing acs_vars insert")?;
+
+            insert.execute(
+                &[
+                    &code.table_code.prefix,
+                    &code.table_code.table_id,
+                    &code.table_code.suffix,
+                    &code.column_id,
+                    &code.var_type,
+                    estimate,
+                    &(year as u32),
+                    &acs_info["label"].to_string(),
+                ]
+            ).chain_err(|| "Error execuring acs_vars insert")?;
+
+            // Read table into table_map for later writing to db
             let table_str = acs_info["concept"].to_string();
             let table_record = parse_table_record(table_str.as_bytes())
                 .to_result()
@@ -195,7 +238,7 @@ impl Explorer {
             count += 1;
         }
 
-        println!("{}", count);
+        println!("{}-{}: {} vars", estimate, year, count);
 
         Ok(())
     }
