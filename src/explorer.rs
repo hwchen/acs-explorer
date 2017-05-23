@@ -50,20 +50,18 @@ impl Explorer {
         use Estimate::*;
 
         // Prep db
-        self.db_client.execute(
-            "DROP TABLE IF EXISTS acs_tables;",
-            &[]
-        )?;
-
-        self.db_client.execute(
-            "CREATE TABLE acs_tables (
+        self.db_client.execute_batch(
+            "
+            DROP TABLE IF EXISTS acs_tables;
+            CREATE TABLE acs_tables (
                 id INTEGER PRIMARY KEY ASC,
                 prefix TEXT NOT NULL,
                 table_id TEXT NOT NULL,
                 suffix TEXT,
                 label TEXT NOT NULL
-            )",
-            &[]
+            );
+
+            ",
         )?;
 
         let mut table_map = HashMap::new();
