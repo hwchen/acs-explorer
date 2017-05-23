@@ -22,6 +22,11 @@ use std::str;
 // looks like whether using prepare or prepare_cached, time is about same
 // (perf should be same, semantics are more ergonomic for maintenance using
 // prepare_cached because it allows the prep statement to be next to variables
+//
+// pragmas don't seem to make much difference here.
+//
+// A quick crude timing using time crate suggests that the fetch operation
+// takes around 3 seconds, which leaves the processing at .40 seconds.
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -82,6 +87,12 @@ impl Explorer {
             );
             ",
         ).chain_err(|| "Error prepping db")?;
+
+        self.db_client.execute_batch("PRAGMA synchronous = OFF")
+            .chain_err(|| "Error turning synchronous off")?;
+
+        self.db_client.execute_batch("PRAGMA journal_mode = MEMORY")
+            .chain_err(|| "Error switching journal mode to Memory")?;
 
         let mut table_map = HashMap::new();
 
