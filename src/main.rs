@@ -78,7 +78,7 @@ fn run() -> Result<()> {
     fs::create_dir_all(ACS_DIR)?;
 
     // Instantiate Explorer and go!
-    let explorer = Explorer::new(
+    let mut explorer = Explorer::new(
         "acs_key".to_owned(),
         PathBuf::from(&db_path),
     ).unwrap();

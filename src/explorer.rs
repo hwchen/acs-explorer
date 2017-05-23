@@ -42,7 +42,7 @@ impl Explorer {
     }
 
     pub fn refresh(
-        &self,
+        &mut self,
         years: Range<usize>,
         acs_estimates: &[Estimate],
         ) -> Result<()>
@@ -116,7 +116,7 @@ impl Explorer {
     }
 
     pub fn refresh_acs_combination(
-        &self,
+        &mut self,
         year: usize,
         acs_est: &Estimate,
         table_map: &mut HashMap<TableCode, String>,
@@ -159,7 +159,7 @@ impl Explorer {
 
     // TODO at end of dev, make this private
     pub fn process_acs_vars_data(
-        &self,
+        &mut self,
         year: usize,
         estimate: &Estimate,
         vars_data: &str,
@@ -168,6 +168,10 @@ impl Explorer {
     {
         let data = json::parse(&vars_data)
             .chain_err(|| "error parsing json response")?;
+
+        // 300s for 40976 vars before transaction.
+        // Now 9s
+        let db_tx = self.db_client.transaction()?;
 
         let mut count = 0;
         for (acs_var, acs_info) in data["variables"].entries() {
@@ -187,7 +191,7 @@ impl Explorer {
             // Write variable
             //TODO Should I move prep outside loop? It currently uses
             // a cached handle anyways.
-            let mut insert = self.db_client.prepare_cached(
+            let mut insert = db_tx.prepare_cached(
                 "INSERT INTO acs_vars (
                     prefix,
                     table_id,
@@ -237,6 +241,8 @@ impl Explorer {
 
             count += 1;
         }
+
+        db_tx.commit()?;
 
         println!("{}-{}: {} vars", estimate, year, count);
 
