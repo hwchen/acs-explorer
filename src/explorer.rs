@@ -14,6 +14,14 @@ use std::str;
 
 // TODO split fetch from processing of data? for dev, this wil
 // reduce churn, reading from files instead of from api.
+//
+// Timings (includ an api call!):
+// - using no transactions and cached sql handle on tables and vars: 300s
+// - adding transaction for vars only: 9s
+// - adding transaction for tables (on top of vars): 2.8s
+// looks like whether using prepare or prepare_cached, time is about same
+// (perf should be same, semantics are more ergonomic for maintenance using
+// prepare_cached because it allows the prep statement to be next to variables
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -87,8 +95,10 @@ impl Explorer {
             }
         }
 
+        let db_tx = self.db_client.transaction()?;
+
         for (code, label) in table_map.iter() {
-            let mut insert = self.db_client.prepare_cached(
+            let mut insert = db_tx.prepare_cached(
                 "INSERT INTO acs_tables (
                     prefix,
                     table_id,
@@ -111,6 +121,8 @@ impl Explorer {
                 ]
             ).chain_err(|| "Error executing acs_tables insert")?;
         }
+
+        db_tx.commit()?;
 
         Ok(())
     }
@@ -169,8 +181,6 @@ impl Explorer {
         let data = json::parse(&vars_data)
             .chain_err(|| "error parsing json response")?;
 
-        // 300s for 40976 vars before transaction.
-        // Now 9s
         let db_tx = self.db_client.transaction()?;
 
         let mut count = 0;
