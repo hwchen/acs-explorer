@@ -51,13 +51,20 @@ impl Explorer {
 
         // Prep db
         self.db_client.execute(
-            "CREATE TABLE IF NOT EXISTS acs_tables (
+            "DROP TABLE IF EXISTS acs_tables;",
+            &[]
+        )?;
+
+        self.db_client.execute(
+            "CREATE TABLE acs_tables (
                 id INTEGER PRIMARY KEY ASC,
                 prefix TEXT NOT NULL,
                 table_id TEXT NOT NULL,
                 suffix TEXT,
                 label TEXT NOT NULL
-            )", &[])?;
+            )",
+            &[]
+        )?;
 
         let mut table_map = HashMap::new();
 
@@ -72,7 +79,7 @@ impl Explorer {
         }
 
         for (code, label) in table_map.iter() {
-            self.db_client.execute(
+            let mut insert = self.db_client.prepare_cached(
                 "INSERT INTO acs_tables (
                     prefix,
                     table_id,
@@ -82,15 +89,18 @@ impl Explorer {
                     ?1,
                     ?2,
                     ?3,
-                    ?4,
-                )",
+                    ?4
+                )"
+            )?;
+
+            insert.execute(
                 &[
                     &code.prefix,
                     &code.table_id,
                     &code.suffix,
-                    &label,
-                ],
-            ).unwrap();
+                    label,
+                ]
+            )?;
         }
 
         Ok(())

@@ -1,5 +1,7 @@
 use error::*;
 use nom::{alpha, digit, rest, space, IResult};
+use rusqlite;
+use rusqlite::types::{ToSql, ToSqlOutput};
 use std::fmt;
 use std::str;
 
@@ -143,6 +145,21 @@ pub struct TableCode {
 pub enum TablePrefix {
     B,
     C,
+}
+
+impl ToSql for TablePrefix {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
+        Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+impl ToString for TablePrefix {
+    fn to_string(&self) -> String {
+        match *self {
+            TablePrefix::B => "B".to_owned(),
+            TablePrefix::C => "C".to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
