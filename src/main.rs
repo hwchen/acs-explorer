@@ -84,7 +84,10 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    explorer.refresh(2009..2010, &[Estimate::FiveYear])?;
+    let start = time::precise_time_s();
+    explorer.refresh(2009..2016, &[Estimate::FiveYear, Estimate::OneYear])?;
+    let end = time::precise_time_s();
+    println!("Overall refresh time: {}", end - start);
 
     //tmp just reading from file instead of fetching
     //----------------------------------------------

@@ -32,6 +32,8 @@ use time;
 // - start search for table id (clap) which returns a table of
 //   all related variables, along with their years and estimates.
 //   (maybe use a flag to do per year or per estimate or per var)
+//
+// TODO print stats after a refresh
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -103,11 +105,14 @@ impl Explorer {
 
         for year in years {
             for acs_est in acs_estimates {
-                self.refresh_acs_combination(
+                match self.refresh_acs_combination(
                     year,
                     &acs_est,
                     &mut table_map,
-                )?;
+                ) {
+                    Ok(_) => println!("completed refresh {}-{}", year, acs_est),
+                    Err(err) => println!("no refresh {}-{}: {}", year, acs_est, err),
+                }
             }
         }
 
@@ -139,6 +144,8 @@ impl Explorer {
         }
 
         db_tx.commit()?;
+
+        // TODO print stats after a refresh
 
         Ok(())
     }
