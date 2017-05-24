@@ -28,7 +28,6 @@ use time;
 //
 // TODO
 // - progress bar
-// - open up all variations to update
 // - start search for table id (clap) which returns a table of
 //   all related variables, along with their years and estimates.
 //   (maybe use a flag to do per year or per estimate or per var)
