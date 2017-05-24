@@ -24,6 +24,7 @@
 ///
 /// curl -v "https://api.census.gov/data/2015/acs5/variables.json" >
 
+#[macro_use]
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
@@ -35,10 +36,12 @@ extern crate rusqlite;
 extern crate time;
 
 mod acs;
+mod cli;
 mod census;
 mod error;
 mod explorer;
 
+use cli::{cli_config, ExplorerConfig};
 use error::*;
 use explorer::Explorer;
 // temp
@@ -69,6 +72,11 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+
+    // get cli config
+    let config = cli_config()
+        .chain_err(|| "Error getting config")?;
+    bail!("temporary early return");
 
     // Setup for database
     let mut db_path = PathBuf::from(ACS_DIR);
