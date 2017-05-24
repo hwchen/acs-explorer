@@ -41,7 +41,7 @@ mod census;
 mod error;
 mod explorer;
 
-use cli::{cli_config, ExplorerConfig};
+use cli::{cli_command, ExplorerCommand, Command};
 use error::*;
 use explorer::Explorer;
 // temp
@@ -73,10 +73,9 @@ fn main() {
 
 fn run() -> Result<()> {
 
-    // get cli config
-    let config = cli_config()
-        .chain_err(|| "Error getting config")?;
-    bail!("temporary early return");
+    // get cli command
+    let command = cli_command()
+        .chain_err(|| "Error getting command")?;
 
     // Setup for database
     let mut db_path = PathBuf::from(ACS_DIR);
@@ -92,22 +91,21 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    let current_year = time::now().tm_year as usize + 1900;
+    use ::cli::Command::*;
+    match command.command {
+        Refresh => {
+            let current_year = time::now().tm_year as usize + 1900;
 
-    let start = time::precise_time_s();
-    explorer.refresh(2009..current_year, &[Estimate::FiveYear, Estimate::OneYear])?;
-    let end = time::precise_time_s();
-    println!("Overall refresh time: {}", end - start);
-
-    //tmp just reading from file instead of fetching
-    //----------------------------------------------
-    //use std::fs::File;
-    //use std::io::Read;
-    //let mut f = File::open("/home/hwchen/projects/rust/acs-explorer/temp-vars.json")?;
-    //let mut buf = String::new();
-    //f.read_to_string(&mut buf)?;
-    //explorer.process_acs_vars_data(2009, &Estimate::FiveYear, &buf, &mut table_map)?;
-    //----------------------------------------------
+            let start = time::precise_time_s();
+            explorer.refresh(2009..current_year, &[Estimate::FiveYear, Estimate::OneYear])?;
+            let end = time::precise_time_s();
+            println!("Overall refresh time: {}", end - start);
+        },
+        TableQuery {prefix, table_id, suffix} => {
+            println!("{:?}, {}, {:?}", prefix, table_id, suffix);
+        }
+        VariableQuery => println!("a variable query"),
+    }
 
     Ok(())
 }
