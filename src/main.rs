@@ -87,7 +87,7 @@ fn run() -> Result<()> {
     let current_year = time::now().tm_year as usize + 1900;
 
     let start = time::precise_time_s();
-    explorer.refresh(2009..current_year + 1, &[Estimate::FiveYear, Estimate::OneYear])?;
+    explorer.refresh(2009..current_year, &[Estimate::FiveYear, Estimate::OneYear])?;
     let end = time::precise_time_s();
     println!("Overall refresh time: {}", end - start);
 
