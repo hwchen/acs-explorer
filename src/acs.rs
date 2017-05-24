@@ -63,22 +63,22 @@ named!(parse_prefix<&[u8], TablePrefix>,
     )
 );
 
-named!(parse_table_id<&[u8], String>,
-    map_res!(
+pub fn parse_table_id(input: &[u8]) -> IResult<&[u8], String> {
+    map_res!(input,
         digit,
         |id| str::from_utf8(id).map(|s| s.to_owned())
     )
-);
+}
 
-named!(parse_suffix<&[u8], Option<String> >,
-    opt!(map_res!(
+pub fn parse_suffix(input: &[u8]) -> IResult<&[u8], Option<String>> {
+    opt!(input, map_res!(
         alpha,
         |suffix| {
             str::from_utf8(suffix)
                 .map(|s| s.to_owned())
         }
     ))
-);
+}
 
 named!(parse_column_id<&[u8], String>,
     map_res!(
