@@ -21,6 +21,10 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                  .help("table id to search for")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
+        .after_help("Table ID search (table subcommand):\n\
+            \t- must start with a valid prefix (or no prefix for search).\n\
+            \t- followed by required numerical table id.\n\
+            \t- with optional table suffix. ")
         .get_matches();
 
     match app_m.subcommand() {
@@ -30,7 +34,8 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .ok_or("Table ID required for query")?;
             let table_query = parse_table_query(table_id.as_bytes())
                 .to_result()
-                .map_err(|_| format!("{:?} is not a valid Table ID", table_id))?;
+                .map_err(|_| format!(
+                    "{:?} is not a valid Table ID format, see --help", table_id))?;
             Ok(ExplorerCommand {
                 command: table_query,
                 options: None,
