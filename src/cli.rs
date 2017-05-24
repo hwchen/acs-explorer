@@ -1,7 +1,6 @@
 use clap::{Arg, App, AppSettings, SubCommand};
 
 use acs;
-use acs::*;
 use error::*;
 
 pub fn cli_command() -> Result<ExplorerCommand> {

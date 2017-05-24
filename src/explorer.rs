@@ -1,12 +1,10 @@
 use acs::*;
 use error::*;
 use json;
-use nom::{alpha, digit, rest, space};
 use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
 use std::collections::HashMap;
-use std::fmt;
 use std::io::Read;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -40,7 +38,6 @@ const VARS_URL: &str = "variables.json";
 pub struct Explorer {
     http_client: reqwest::Client,
     db_client: rusqlite::Connection,
-    census_url_base: Url,
     acs_key: String,
 }
 
@@ -50,11 +47,8 @@ impl Explorer {
         db_path: PathBuf,
         ) -> Result<Self>
     {
-        let url = Url::parse(CENSUS_URL_BASE)?;
-
         Ok(Explorer {
             http_client: reqwest::Client::new()?,
-            census_url_base: url,
             db_client: rusqlite::Connection::open(db_path)?,
             acs_key: acs_key,
         })
@@ -66,8 +60,6 @@ impl Explorer {
         acs_estimates: &[Estimate],
         ) -> Result<()>
     {
-        use Estimate::*;
-
         // Prep db
         self.db_client.execute_batch(
             "

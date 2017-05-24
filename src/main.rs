@@ -41,7 +41,7 @@ mod census;
 mod error;
 mod explorer;
 
-use cli::{cli_command, ExplorerCommand, Command};
+use cli::{cli_command, Command};
 use error::*;
 use explorer::Explorer;
 // temp
@@ -91,7 +91,7 @@ fn run() -> Result<()> {
         PathBuf::from(&db_path),
     ).unwrap();
 
-    use ::cli::Command::*;
+    use Command::*;
     match command.command {
         Refresh => {
             let current_year = time::now().tm_year as usize + 1900;
