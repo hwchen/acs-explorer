@@ -11,10 +11,8 @@ use std::io::Read;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str;
+use time;
 
-// TODO split fetch from processing of data? for dev, this wil
-// reduce churn, reading from files instead of from api.
-//
 // Timings (includ an api call!):
 // - using no transactions and cached sql handle on tables and vars: 300s
 // - adding transaction for vars only: 9s
@@ -27,6 +25,13 @@ use std::str;
 //
 // A quick crude timing using time crate suggests that the fetch operation
 // takes around 3 seconds, which leaves the processing at .40 seconds.
+//
+// TODO
+// - progress bar
+// - open up all variations to update
+// - start search for table id (clap) which returns a table of
+//   all related variables, along with their years and estimates.
+//   (maybe use a flag to do per year or per estimate or per var)
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -146,13 +151,21 @@ impl Explorer {
         ) -> Result<()>
     {
         // TODO check year
+        let start = time::precise_time_s();
         let acs_vars_data = self.fetch_acs_combination(year, acs_est)?;
-        self.process_acs_vars_data(
+        let end = time::precise_time_s();
+        println!("Fetch time for {}-{}: {}", year, acs_est, end - start);
+        let start = time::precise_time_s();
+        let res = self.process_acs_vars_data(
             year,
             acs_est,
             &acs_vars_data,
             table_map,
-        )
+        );
+        let end = time::precise_time_s();
+        println!("Process time for {}-{}: {}", year, acs_est, end - start);
+
+        res
     }
 
     fn fetch_acs_combination(

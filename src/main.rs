@@ -32,6 +32,7 @@ extern crate json;
 extern crate nom;
 extern crate reqwest;
 extern crate rusqlite;
+extern crate time;
 
 mod acs;
 mod census;
