@@ -1,5 +1,7 @@
 use acs::*;
+use cli::*;
 use error::*;
+
 use json;
 use reqwest;
 use reqwest::{StatusCode, Url};
@@ -24,13 +26,25 @@ use time;
 // A quick crude timing using time crate suggests that the fetch operation
 // takes around 3 seconds, which leaves the processing at .40 seconds.
 //
-// TODO
+// Wishlist
 // - progress bar
 // - start search for table id (clap) which returns a table of
 //   all related variables, along with their years and estimates.
 //   (maybe use a flag to do per year or per estimate or per var)
+// - Then search for all the vars in one table.
+// Both these searches use table_id. What to call them?
 //
-// TODO print stats after a refresh
+// fuzzy search? (on label only)
+// should I just make both tables into one?
+//
+// print stats after a refresh
+//
+// TODO next I want to know the years and estimates of each table. Never search
+// by var.
+// - format table (for <=2 and >2)
+// - sqlite composite index and foreign key, merge tables?
+// - separate Command from Option in cli! return a tuple of both. Then
+//   command can be sent in, and options simply parsed.
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -117,10 +131,7 @@ impl Explorer {
                     suffix,
                     label
                 ) VALUES (
-                    ?1,
-                    ?2,
-                    ?3,
-                    ?4
+                    ?1, ?2, ?3, ?4
                 )"
             ).chain_err(|| "Error preparing acs_tables insert")?;
 
@@ -234,14 +245,7 @@ impl Explorer {
                     year,
                     label
                 ) VALUES (
-                    ?1,
-                    ?2,
-                    ?3,
-                    ?4,
-                    ?5,
-                    ?6,
-                    ?7,
-                    ?8
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
                 )"
             ).chain_err(|| "Error preparing acs_vars insert")?;
 
@@ -279,5 +283,116 @@ impl Explorer {
         println!("{}-{}: {} vars", estimate, year, count);
 
         Ok(())
+    }
+
+    pub fn query_by_table_id(
+        &mut self,
+        prefix: Option<TablePrefix>,
+        table_id: String,
+        suffix: Option<String>
+        ) -> Result<Vec<TableRecord>>
+    {
+        if let Some(prefix) = prefix {
+            if let Some(suffix) = suffix {
+                // has both prefix and suffix
+                let mut query = self.db_client.prepare(
+                "SELECT prefix, table_id, suffix, label
+                    FROM acs_tables
+                    WHERE prefix = ?1
+                        AND suffix = ?2
+                        AND table_id = ?3
+                ")?;
+                let records = query.query_map(&[&prefix, &suffix, &table_id], |row| {
+                    TableRecord {
+                        code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        label: row.get(3),
+                    }
+                })?;
+
+                let mut res = Vec::new();
+                for record in records {
+                    res.push(record?);
+                }
+                Ok(res)
+            } else {
+                // has prefix but no suffix
+                let mut query = self.db_client.prepare(
+                "SELECT prefix, table_id, suffix, label
+                    FROM acs_tables
+                    WHERE prefix = ?1
+                        AND table_id = ?2
+                ")?;
+                let records = query.query_map(&[&prefix, &table_id], |row| {
+                    TableRecord {
+                        code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        label: row.get(3),
+                    }
+                })?;
+
+                let mut res = Vec::new();
+                for record in records {
+                    res.push(record?);
+                }
+                Ok(res)
+            }
+        } else {
+            if let Some(suffix) = suffix {
+                // has suffix but no prefix
+                let mut query = self.db_client.prepare(
+                "SELECT prefix, table_id, suffix, label
+                    FROM acs_tables
+                    WHERE suffix = ?1
+                        AND table_id = ?2
+                ")?;
+                let records = query.query_map(&[&suffix, &table_id], |row| {
+                    TableRecord {
+                        code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        label: row.get(3),
+                    }
+                })?;
+
+                let mut res = Vec::new();
+                for record in records {
+                    res.push(record?);
+                }
+                Ok(res)
+            } else {
+                // has no suffix and no prefix
+                let mut query = self.db_client.prepare(
+                "SELECT prefix, table_id, suffix, label
+                    FROM acs_tables
+                    WHERE table_id = ?1
+                ")?;
+
+                let records = query.query_map(&[&table_id], |row| {
+                    TableRecord {
+                        code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        label: row.get(3),
+                    }
+                })?;
+
+                let mut res = Vec::new();
+                for record in records {
+                    res.push(record?);
+                }
+                Ok(res)
+            }
+        }
     }
 }

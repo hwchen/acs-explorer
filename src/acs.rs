@@ -1,7 +1,7 @@
 use error::*;
 use nom::{alpha, digit, rest, space, IResult};
 use rusqlite;
-use rusqlite::types::{ToSql, ToSqlOutput};
+use rusqlite::types::{FromSql, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use std::fmt;
 use std::str;
 
@@ -150,6 +150,18 @@ pub enum TablePrefix {
 impl ToSql for TablePrefix {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
         Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+impl FromSql for TablePrefix {
+    fn column_result(value: ValueRef) -> FromSqlResult<TablePrefix> {
+        value.as_str().and_then(|val| {
+            match val {
+                "B" => Ok(TablePrefix::B),
+                "C" => Ok(TablePrefix::C),
+                _   => Ok(TablePrefix::B),
+            }
+        })
     }
 }
 

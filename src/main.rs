@@ -101,8 +101,12 @@ fn run() -> Result<()> {
             let end = time::precise_time_s();
             println!("Overall refresh time: {}", end - start);
         },
-        TableQuery {prefix, table_id, suffix} => {
+        TableIdQuery {prefix, table_id, suffix} => {
             println!("{:?}, {}, {:?}", prefix, table_id, suffix);
+            let records = explorer.query_by_table_id(prefix, table_id, suffix)?;
+            for (i, record) in records.iter().enumerate() {
+                println!("{}, {:?}", i, record);
+            }
         }
         VariableQuery => println!("a variable query"),
     }

@@ -38,17 +38,17 @@ pub fn cli_command() -> Result<ExplorerCommand> {
     // Now section on matching subcommands and flags
     match app_m.subcommand() {
         ("table", Some(sub_m)) => {
-            let table_id = sub_m
+            let table_id_query = sub_m
                 .value_of("table_query")
                 .ok_or("Table ID required for query")?;
-            let table_query = parse_table_query(table_id.as_bytes())
+            let table_id_query = parse_table_query(table_id_query.as_bytes())
                 .to_result()
                 .map_err(|_| format!(
-                    "{:?} is not a valid Table ID format, see --help", table_id))?;
+                    "{:?} is not a valid Table ID format, see --help", table_id_query))?;
             if sub_m.is_present("verbose") { verbose = true; }
 
             Ok(ExplorerCommand {
-                command: table_query,
+                command: table_id_query,
                 verbose: verbose,
                 options: None,
             })
@@ -76,7 +76,7 @@ pub struct ExplorerCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Refresh,
-    TableQuery {
+    TableIdQuery {
         prefix: Option<TablePrefix>,
         table_id: String,
         suffix: Option<String>,
@@ -95,7 +95,7 @@ named!(parse_table_query<&[u8], Command>,
             }
         })>>
 
-        (Command::TableQuery {
+        (Command::TableIdQuery {
                 prefix: prefix,
                 table_id: table_id,
                 suffix: suffix,
