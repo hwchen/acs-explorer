@@ -14,6 +14,9 @@ pub fn cli_command() -> Result<ExplorerCommand> {
         .author(crate_authors!())
         .about(crate_description!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
+        .arg(Arg::with_name("verbose")
+             .short("v")
+             .global(true))
         .subcommand(SubCommand::with_name("table")
             .about("search for info on an acs table")
             .arg(Arg::with_name("table_query")
@@ -27,6 +30,12 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             \t- with optional table suffix. ")
         .get_matches();
 
+    // for global flags. Check at each level/subcommand if the flag is present,
+    // then flip switch.
+    let mut verbose = false;
+    if app_m.is_present("verbose") { verbose = true; }
+
+    // Now section on matching subcommands and flags
     match app_m.subcommand() {
         ("table", Some(sub_m)) => {
             let table_id = sub_m
@@ -36,14 +45,20 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .to_result()
                 .map_err(|_| format!(
                     "{:?} is not a valid Table ID format, see --help", table_id))?;
+            if sub_m.is_present("verbose") { verbose = true; }
+
             Ok(ExplorerCommand {
                 command: table_query,
+                verbose: verbose,
                 options: None,
             })
         },
-        ("refresh", _) => {
+        ("refresh", Some(sub_m)) => {
+            if sub_m.is_present("verbose") { verbose = true; }
+
             Ok(ExplorerCommand {
                 command: Command::Refresh,
+                verbose: verbose,
                 options: None,
             })
         },
@@ -51,11 +66,14 @@ pub fn cli_command() -> Result<ExplorerCommand> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExplorerCommand {
     pub command: Command,
+    verbose: bool,
     options: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Refresh,
     TableQuery {
