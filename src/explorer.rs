@@ -45,6 +45,7 @@ use time;
 // - sqlite composite index and foreign key, merge tables?
 // - separate Command from Option in cli! return a tuple of both. Then
 //   command can be sent in, and options simply parsed.
+// - rename commands: describe, fetch, find, --table --label
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";

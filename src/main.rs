@@ -107,7 +107,8 @@ fn run() -> Result<()> {
             for (i, record) in records.iter().enumerate() {
                 println!("{}, {:?}", i, record);
             }
-        }
+        },
+        LabelQuery(s) => println!("label query: {:?}", s),
         VariableQuery => println!("a variable query"),
     }
 
