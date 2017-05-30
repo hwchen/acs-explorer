@@ -425,6 +425,7 @@ impl Explorer {
         // duplication just to handle putting in the right number of
         // args
         if !suffix.is_none() {
+            let start = time::precise_time_s();
             let vars = query.query_map(&[&table_id, &prefix, &suffix], |row| {
                 VariableRecord {
                     variable: Variable {
@@ -444,12 +445,28 @@ impl Explorer {
                 }
             })?;
 
-            let mut res = Vec::new();
+            let mut query = self.db_client.prepare("
+                select count(*)
+                from acs_vars
+                where table_id = ?1 and prefix = ?2 and suffix is null
+            ")?;
+
+            let count: u32 = query.query_row(&[&table_id, &prefix], |row| {
+                row.get(0)
+            })?;
+
+            let mut res = Vec::with_capacity(count as usize);
+            // allocating capacity beforehand saves maybe .01s? .023 -> .014
+            //let mut res = Vec::new();
             for var in vars {
                 res.push(var?);
             }
+
+            let end = time::precise_time_s();
+            println!("query time and collecting for vars: {}", end - start);
             Ok(res)
         } else {
+            let start = time::precise_time_s();
             let vars = query.query_map(&[&table_id, &prefix], |row| {
                 VariableRecord {
                     variable: Variable {
@@ -469,10 +486,24 @@ impl Explorer {
                 }
             })?;
 
-            let mut res = Vec::new();
+            let mut query = self.db_client.prepare("
+                select count(*)
+                from acs_vars
+                where table_id = ?1 and prefix = ?2 and suffix is null
+            ")?;
+
+            let count: u32 = query.query_row(&[&table_id, &prefix], |row| {
+                row.get(0)
+            })?;
+
+            let mut res = Vec::with_capacity(count as usize);
+            // allocating capacity beforehand saves maybe .01s? .023 -> .014
+            //let mut res = Vec::new();
             for var in vars {
                 res.push(var?);
             }
+            let end = time::precise_time_s();
+            println!("query time and collecting for vars: {}", end - start);
             Ok(res)
         }
 
