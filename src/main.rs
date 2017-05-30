@@ -45,7 +45,7 @@ use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
 use explorer::Explorer;
 // temp
-use acs::Estimate;
+use acs::{Estimate, format_table_records};
 
 use std::env;
 use std::fs;
@@ -103,11 +103,9 @@ fn run() -> Result<()> {
             println!("Overall refresh time: {}", end - start);
         },
         FindTable(ByTableId(TableIdQuery {prefix, table_id, suffix})) => {
-            println!("{:?}, {}, {:?}", prefix, table_id, suffix);
+            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
             let records = explorer.query_by_table_id(prefix, table_id, suffix)?;
-            for (i, record) in records.iter().enumerate() {
-                println!("{}, {:?}", i, record);
-            }
+            println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
         DescribeTable => println!("a variable query"),
