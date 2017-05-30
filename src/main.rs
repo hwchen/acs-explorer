@@ -41,7 +41,7 @@ mod census;
 mod error;
 mod explorer;
 
-use cli::{cli_command, Command};
+use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
 use explorer::Explorer;
 // temp
@@ -92,6 +92,7 @@ fn run() -> Result<()> {
     ).unwrap();
 
     use Command::*;
+    use FindTableQuery::*;
     match command.command {
         Refresh => {
             let current_year = time::now().tm_year as usize + 1900;
@@ -101,15 +102,16 @@ fn run() -> Result<()> {
             let end = time::precise_time_s();
             println!("Overall refresh time: {}", end - start);
         },
-        TableIdQuery {prefix, table_id, suffix} => {
+        FindTable(ByTableId(TableIdQuery {prefix, table_id, suffix})) => {
             println!("{:?}, {}, {:?}", prefix, table_id, suffix);
             let records = explorer.query_by_table_id(prefix, table_id, suffix)?;
             for (i, record) in records.iter().enumerate() {
                 println!("{}, {:?}", i, record);
             }
         },
-        LabelQuery(s) => println!("label query: {:?}", s),
-        VariableQuery => println!("a variable query"),
+        FindTable(ByLabel(s)) => println!("label query: {:?}", s),
+        DescribeTable => println!("a variable query"),
+        FetchTable => println!("a variable query"),
     }
 
     Ok(())

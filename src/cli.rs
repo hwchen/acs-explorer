@@ -21,17 +21,17 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             .about("search for info on an acs table")
             .subcommand(SubCommand::with_name("table")
                 .alias("t")
-                .arg(Arg::with_name("table_id_query")
+                .arg(Arg::with_name("find_table")
                     .takes_value(true)
                     .help("enter table id to search for")))
             .subcommand(SubCommand::with_name("label")
                 .alias("l")
-                .arg(Arg::with_name("label_query")
+                .arg(Arg::with_name("find_label")
                     .takes_value(true)
                     .help("label to search for"))))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
-        .after_help("Table ID search (table subcommand):\n\
+        .after_help("Table ID search (find table subcommand):\n\
             \t- must start with a valid prefix (or no prefix for search).\n\
             \t- followed by required numerical table id.\n\
             \t- with optional table suffix. ")
@@ -50,7 +50,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                     if sub_m.is_present("verbose") { verbose = true; }
 
                     let query = sub_m
-                        .value_of("table_id_query")
+                        .value_of("find_table")
                         .ok_or("Table id required for query")?;
 
                     let query = parse_table_query(query.as_bytes())
@@ -61,7 +61,9 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                         )?;
 
                     Ok(ExplorerCommand {
-                        command: query,
+                        command: Command::FindTable(
+                            FindTableQuery::ByTableId( query )
+                        ),
                         verbose: verbose,
                         options: None,
                     })
@@ -70,11 +72,13 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                     if sub_m.is_present("verbose") { verbose = true; }
 
                     let query = sub_m
-                        .value_of("label_query")
+                        .value_of("find_label")
                         .ok_or("Text required to search by label")?;
 
                     Ok(ExplorerCommand {
-                        command: Command::LabelQuery(query.to_owned()),
+                        command: Command::FindTable(
+                            FindTableQuery::ByLabel( query.to_owned() )
+                        ),
                         verbose:verbose,
                         options: None,
                     })
@@ -98,23 +102,32 @@ pub fn cli_command() -> Result<ExplorerCommand> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExplorerCommand {
     pub command: Command,
-    verbose: bool,
-    options: Option<String>,
+    pub verbose: bool,
+    pub options: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Refresh,
-    TableIdQuery {
-        prefix: Option<TablePrefix>,
-        table_id: String,
-        suffix: Option<String>,
-    },
-    LabelQuery(String),
-    VariableQuery,
+    FindTable(FindTableQuery),
+    DescribeTable,
+    FetchTable, // all, by year, acs estimate
 }
 
-named!(parse_table_query<&[u8], Command>,
+#[derive(Debug, Clone, PartialEq)]
+pub enum FindTableQuery {
+    ByTableId(TableIdQuery),
+    ByLabel(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableIdQuery {
+    pub prefix: Option<TablePrefix>,
+    pub table_id: String,
+    pub suffix: Option<String>,
+}
+
+named!(parse_table_query<&[u8], TableIdQuery>,
     do_parse!(
         prefix: parse_prefix_query >>
         table_id: parse_table_id >>
@@ -125,7 +138,7 @@ named!(parse_table_query<&[u8], Command>,
             }
         })>>
 
-        (Command::TableIdQuery {
+        (TableIdQuery {
                 prefix: prefix,
                 table_id: table_id,
                 suffix: suffix,
