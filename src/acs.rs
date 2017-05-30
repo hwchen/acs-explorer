@@ -141,7 +141,7 @@ pub struct TableCode {
     pub suffix: Option<String>, // should be limited to upper-case letters?
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TablePrefix {
     B,
     C,
@@ -238,6 +238,27 @@ impl ToSql for Estimate {
 //}
 
 pub fn format_table_records(records: Vec<TableRecord>) -> String {
+    use ::std::cmp::Ordering;
+
+    let mut records = records;
+    records.sort_by(|ref a, ref b| {
+        if a.code.table_id != b.code.table_id {
+            a.code.table_id.cmp(&b.code.table_id)
+        } else if a.code.prefix != b.code.prefix {
+            a.code.prefix.cmp(&b.code.prefix)
+        } else if a.code.suffix.is_none() && b.code.suffix.is_none() {
+            Ordering::Equal
+        } else if a.code.suffix.is_none() && !b.code.suffix.is_none() {
+            Ordering::Less
+        } else if !a.code.suffix.is_none() && b.code.suffix.is_none() {
+            Ordering::Greater
+        } else if !a.code.suffix.is_none() && !b.code.suffix.is_none() {
+            a.code.suffix.as_ref().unwrap().cmp(&b.code.suffix.as_ref().unwrap())
+        } else {
+            Ordering::Equal
+        }
+    });
+
     let mut res = "code      | label\n==========|====================\n".to_owned();
 
     for record in records {
