@@ -38,6 +38,9 @@ use time;
 //
 // print stats after a refresh
 //
+// For describe queries, two lookups is faster: 0.11s for query just acs_vars,
+// and 2.43s for query on join of acs_table and acs_vars
+//
 // TODO next I want to know the years and estimates of each table. Never search
 // by var.
 // - format table (for <=2 and >2)
@@ -406,11 +409,10 @@ impl Explorer {
         ) -> Result<Vec<VariableRecord>>
     {
         let sql_str = "
-            SELECT t.prefix, t.table_id, t.suffix, t.label,
-                v.column_id, v.var_type, v.year, v.estimate, v.label
-            from acs_tables t left join acs_vars v
-                on (t.table_id = v.table_id and t.prefix = v.prefix)
-            where t.table_id = ?1 and t.prefix = ?2 and t.suffix
+            SELECT prefix, table_id, suffix,
+                column_id, var_type, year, estimate, label
+            from acs_vars
+            where table_id = ?1 and prefix = ?2 and suffix
         ";
         let sql_str = if suffix.is_none() {
             format!("{} {};", sql_str, "is null")
@@ -426,19 +428,19 @@ impl Explorer {
             let vars = query.query_map(&[&table_id, &prefix, &suffix], |row| {
                 VariableRecord {
                     variable: Variable {
-                        label: row.get(8),
+                        label: row.get(7),
                         code: VariableCode {
                             table_code: TableCode {
                                 prefix: row.get(0),
                                 table_id: row.get(1),
                                 suffix: row.get(2),
                             },
-                            column_id: row.get(4),
-                            var_type: row.get(5),
+                            column_id: row.get(3),
+                            var_type: row.get(4),
                         }
                     },
-                    estimate: row.get(7),
-                    year: row.get(6),
+                    estimate: row.get(6),
+                    year: row.get(5),
                 }
             })?;
 
@@ -451,19 +453,19 @@ impl Explorer {
             let vars = query.query_map(&[&table_id, &prefix], |row| {
                 VariableRecord {
                     variable: Variable {
-                        label: row.get(8),
+                        label: row.get(7),
                         code: VariableCode {
                             table_code: TableCode {
                                 prefix: row.get(0),
                                 table_id: row.get(1),
                                 suffix: row.get(2),
                             },
-                            column_id: row.get(4),
-                            var_type: row.get(5),
+                            column_id: row.get(3),
+                            var_type: row.get(4),
                         }
                     },
-                    estimate: row.get(7),
-                    year: row.get(6),
+                    estimate: row.get(6),
+                    year: row.get(5),
                 }
             })?;
 
