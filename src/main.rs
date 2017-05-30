@@ -108,7 +108,11 @@ fn run() -> Result<()> {
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable(query) => println!("describe table: {:?}", query),
+        DescribeTable(TableIdQuery {prefix, table_id, suffix}) => {
+            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
+            let records = explorer.describe_table(prefix.unwrap(), table_id, suffix);
+            println!("{:?}", records);
+        },
         FetchTable => println!("a variable query"),
     }
 

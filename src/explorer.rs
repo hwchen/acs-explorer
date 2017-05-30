@@ -46,6 +46,7 @@ use time;
 //   command can be sent in, and options simply parsed.
 // - rename commands: describe, fetch, find, --table --label
 // - fix query order to match index
+// - reimplement the ToSql to be a more compact format
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -397,8 +398,82 @@ impl Explorer {
         }
     }
 
-//    pub fn describe_table(
-//        prefix: TablePrefix,
-//        table_id: String,
-//
+    pub fn describe_table(
+        &mut self,
+        prefix: TablePrefix,
+        table_id: String,
+        suffix: Option<String>,
+        ) -> Result<Vec<VariableRecord>>
+    {
+        let sql_str = "
+            SELECT t.prefix, t.table_id, t.suffix, t.label,
+                v.column_id, v.var_type, v.year, v.estimate, v.label
+            from acs_tables t left join acs_vars v
+                on (t.table_id = v.table_id and t.prefix = v.prefix)
+            where t.table_id = ?1 and t.prefix = ?2 and t.suffix
+        ";
+        let sql_str = if suffix.is_none() {
+            format!("{} {};", sql_str, "is null")
+        } else {
+            format!("{} {};", sql_str, "= ?3")
+        };
+
+        let mut query = self.db_client.prepare(&sql_str)?;
+
+        // duplication just to handle putting in the right number of
+        // args
+        if !suffix.is_none() {
+            let vars = query.query_map(&[&table_id, &prefix, &suffix], |row| {
+                VariableRecord {
+                    variable: Variable {
+                        label: row.get(8),
+                        code: VariableCode {
+                            table_code: TableCode {
+                                prefix: row.get(0),
+                                table_id: row.get(1),
+                                suffix: row.get(2),
+                            },
+                            column_id: row.get(4),
+                            var_type: row.get(5),
+                        }
+                    },
+                    estimate: row.get(7),
+                    year: row.get(6),
+                }
+            })?;
+
+            let mut res = Vec::new();
+            for var in vars {
+                res.push(var?);
+            }
+            Ok(res)
+        } else {
+            let vars = query.query_map(&[&table_id, &prefix], |row| {
+                VariableRecord {
+                    variable: Variable {
+                        label: row.get(8),
+                        code: VariableCode {
+                            table_code: TableCode {
+                                prefix: row.get(0),
+                                table_id: row.get(1),
+                                suffix: row.get(2),
+                            },
+                            column_id: row.get(4),
+                            var_type: row.get(5),
+                        }
+                    },
+                    estimate: row.get(7),
+                    year: row.get(6),
+                }
+            })?;
+
+            let mut res = Vec::new();
+            for var in vars {
+                res.push(var?);
+            }
+            Ok(res)
+        }
+
+    }
+
 }

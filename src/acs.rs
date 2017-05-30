@@ -1,7 +1,7 @@
 use error::*;
 use nom::{alpha, digit, rest, space, IResult};
 use rusqlite;
-use rusqlite::types::{FromSql, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use rusqlite::types::{FromSql, FromSqlError,FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use std::fmt;
 use std::str;
 
@@ -110,9 +110,9 @@ fn match_var_type(input: &[u8]) -> Result<VariableType> {
 // Not for public access?
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableRecord {
-    variable: Variable,
-    estimate: Estimate,
-    year: usize, // I just use one big table, denormalized
+    pub variable: Variable,
+    pub estimate: Estimate,
+    pub year: u32, // I just use one big table, denormalized
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -159,7 +159,7 @@ impl FromSql for TablePrefix {
             match val {
                 "B" => Ok(TablePrefix::B),
                 "C" => Ok(TablePrefix::C),
-                _   => Ok(TablePrefix::B),
+                _ => Err(FromSqlError::InvalidType),
             }
         })
     }
@@ -183,6 +183,18 @@ pub enum VariableType {
 impl ToSql for VariableType {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
         Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+impl FromSql for VariableType {
+    fn column_result(value: ValueRef) -> FromSqlResult<VariableType> {
+        value.as_str().and_then(|val| {
+            match val {
+                "M" => Ok(VariableType::MarginOfError),
+                "E" => Ok(VariableType::Value),
+                _ => Err(FromSqlError::InvalidType),
+            }
+        })
     }
 }
 
@@ -225,6 +237,18 @@ impl fmt::Display for Estimate {
 impl ToSql for Estimate {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
         Ok(ToSqlOutput::from(self.to_string()))
+    }
+}
+
+impl FromSql for Estimate {
+    fn column_result(value: ValueRef) -> FromSqlResult<Estimate> {
+        value.as_str().and_then(|val| {
+            match val {
+                "ACS 1-year estimate" => Ok(Estimate::OneYear),
+                "ACS 5-year estimate" => Ok(Estimate::FiveYear),
+                _ => Err(FromSqlError::InvalidType),
+            }
+        })
     }
 }
 
