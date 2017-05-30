@@ -108,7 +108,7 @@ fn run() -> Result<()> {
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable => println!("a variable query"),
+        DescribeTable(query) => println!("describe table: {:?}", query),
         FetchTable => println!("a variable query"),
     }
 

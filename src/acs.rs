@@ -276,6 +276,9 @@ pub fn format_table_records(records: Vec<TableRecord>) -> String {
     res
 }
 
+//pub fn format_describe_table(
+//}
+
 #[cfg(test)]
 mod tests {
     use super::*;

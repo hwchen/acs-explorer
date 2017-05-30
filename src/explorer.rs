@@ -1,5 +1,4 @@
 use acs::*;
-use cli::*;
 use error::*;
 
 use json;
@@ -46,6 +45,7 @@ use time;
 // - separate Command from Option in cli! return a tuple of both. Then
 //   command can be sent in, and options simply parsed.
 // - rename commands: describe, fetch, find, --table --label
+// - fix query order to match index
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -396,4 +396,9 @@ impl Explorer {
             }
         }
     }
+
+//    pub fn describe_table(
+//        prefix: TablePrefix,
+//        table_id: String,
+//
 }

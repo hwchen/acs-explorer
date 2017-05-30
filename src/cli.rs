@@ -2,7 +2,6 @@ use clap::{Arg, App, AppSettings, SubCommand};
 
 use acs::{
     TablePrefix,
-    TableCode,
     parse_table_id,
     parse_suffix,
 };
@@ -29,6 +28,11 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .arg(Arg::with_name("find_label")
                     .takes_value(true)
                     .help("label to search for"))))
+        .subcommand(SubCommand::with_name("describe")
+            .alias("d")
+            .arg(Arg::with_name("describe_table")
+                .takes_value(true)
+                .help("enter table id to describe")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
         .after_help("Table ID search (find table subcommand):\n\
@@ -86,6 +90,30 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 _ => Err("Not a valid subcommand".into()),
             }
         },
+        ("describe", Some(sub_m)) => {
+            if sub_m.is_present("verbose") { verbose = true; }
+
+                let query = sub_m
+                    .value_of("describe_table")
+                    .ok_or("Table id required for query")?;
+
+                let query = parse_table_query(query.as_bytes())
+                    .to_result()
+                    .map_err(|_| format!(
+                        "{:?} is not a valid Table ID format, see --help",
+                        query)
+                    )?;
+
+                if query.prefix.is_none() {
+                    return Err("Prefix required for table code".into());
+                }
+
+                Ok(ExplorerCommand {
+                    command: Command::DescribeTable(query),
+                    verbose: verbose,
+                    options: None,
+                })
+        },
         ("refresh", Some(sub_m)) => {
             if sub_m.is_present("verbose") { verbose = true; }
 
@@ -110,7 +138,7 @@ pub struct ExplorerCommand {
 pub enum Command {
     Refresh,
     FindTable(FindTableQuery),
-    DescribeTable,
+    DescribeTable(TableIdQuery),
     FetchTable, // all, by year, acs estimate
 }
 
