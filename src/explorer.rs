@@ -107,9 +107,16 @@ impl Explorer {
                 suffix TEXT,
                 column_id TEXT NOT NULL,
                 var_type TEXT NOT NULL,
-                estimate TEXT NOT NULL,
-                year INTEGER NOT NULL,
                 label TEXT NOT NULL
+            );
+            DROP TABLE IF EXISTS acs_est_years;
+            CREATE TABLE acs_est_years (
+                id INTEGER PRIMARY KEY ASC,
+                prefix TEXT NOT NULL,
+                table_id TEXT NOT NULL,
+                suffix TEXT,
+                estimate TEXT NOT NULL,
+                year INTEGER NOT NULL
             );
             ",
         ).chain_err(|| "Error prepping db")?;
@@ -121,6 +128,7 @@ impl Explorer {
             .chain_err(|| "Error switching journal mode to Memory")?;
 
         let mut table_map = HashMap::new();
+        let mut vars_map = HashMap::new();
 
         for year in years {
             for acs_est in acs_estimates {
@@ -128,6 +136,7 @@ impl Explorer {
                     year,
                     &acs_est,
                     &mut table_map,
+                    &mut vars_map,
                 ) {
                     Ok(_) => println!("completed refresh {}-{}", year, acs_est),
                     Err(err) => println!("no refresh {}-{}: {}", year, acs_est, err),
@@ -160,6 +169,32 @@ impl Explorer {
                 ).chain_err(|| "Error executing acs_tables insert")?;
             }
 
+            for (code, label) in vars_map.iter() {
+                let mut insert = db_tx.prepare_cached(
+                    "INSERT INTO acs_tables (
+                        prefix,
+                        table_id,
+                        suffix,
+                        column_id,
+                        var_type,
+                        label
+                    ) VALUES (
+                        ?1, ?2, ?3, ?4, ?5, ?6
+                    )"
+                ).chain_err(|| "Error preparing acs_tables insert")?;
+
+                insert.execute(
+                    &[
+                        &code.table_code.prefix,
+                        &code.table_code.table_id,
+                        &code.table_code.suffix,
+                        &code.column_id,
+                        &code.var_type,
+                        label,
+                    ]
+                ).chain_err(|| "Error executing acs_tables insert")?;
+            }
+
             db_tx.commit()?;
         }
 
@@ -176,6 +211,7 @@ impl Explorer {
         year: usize,
         acs_est: &Estimate,
         table_map: &mut HashMap<TableCode, String>,
+        vars_map: &mut HashMap<VariableCode, String>,
         ) -> Result<()>
     {
         // TODO check year
@@ -189,6 +225,7 @@ impl Explorer {
             acs_est,
             &acs_vars_data,
             table_map,
+            vars_map,
         );
         let end = time::precise_time_s();
         println!("Process time for {}-{}: {}", year, acs_est, end - start);
@@ -228,6 +265,7 @@ impl Explorer {
         estimate: &Estimate,
         vars_data: &str,
         table_map: &mut HashMap<TableCode, String>,
+        vars_map: &mut HashMap<VariableCode, String>,
         ) -> Result<()>
     {
         let data = json::parse(&vars_data)
@@ -237,6 +275,10 @@ impl Explorer {
 
         let mut count = 0;
         for (acs_var, acs_info) in data["variables"].entries() {
+            // Read varsin into var_map for later writing into db
+            // This normalizes the data, which is good for the kind
+            // of fetching we'll be doing later.
+
             let acs_var_str = acs_var.to_string();
             // Look for variable names (which have a '_' in them)
             if acs_var_str.split("_").count() != 2 {
@@ -250,36 +292,13 @@ impl Explorer {
                 .to_result()
                 .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
 
-            // Write variable
-            //TODO Should I move prep outside loop? It currently uses
-            // a cached handle anyways.
-            let mut insert = db_tx.prepare_cached(
-                "INSERT INTO acs_vars (
-                    prefix,
-                    table_id,
-                    suffix,
-                    column_id,
-                    var_type,
-                    estimate,
-                    year,
-                    label
-                ) VALUES (
-                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
-                )"
-            ).chain_err(|| "Error preparing acs_vars insert")?;
+            if let None = vars_map.get(&code) {
+                vars_map.insert(code, acs_info["label"].to_string());
+            };
 
-            insert.execute(
-                &[
-                    &code.table_code.prefix,
-                    &code.table_code.table_id,
-                    &code.table_code.suffix,
-                    &code.column_id,
-                    &code.var_type,
-                    estimate,
-                    &(year as u32),
-                    &acs_info["label"].to_string(),
-                ]
-            ).chain_err(|| "Error execuring acs_vars insert")?;
+            // TODO Now deal with estimate and year
+            //estimate,
+            //&(year as u32),
 
             // Read table into table_map for later writing to db
             let table_str = acs_info["concept"].to_string();

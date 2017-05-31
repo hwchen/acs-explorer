@@ -154,7 +154,7 @@ impl PartialOrd for Variable {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariableCode {
     pub table_code: TableCode,
     pub column_id: String,
@@ -266,7 +266,7 @@ impl ToString for TablePrefix {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VariableType {
     MarginOfError,
     Value,
