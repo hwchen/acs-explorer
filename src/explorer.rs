@@ -41,6 +41,8 @@ use time;
 // For describe queries, two lookups is faster: 0.11s for query just acs_vars,
 // and 2.43s for query on join of acs_table and acs_vars
 //
+// Timing on etl lookup is 0.15 before indexing, 0.05 after. (with stdout)) (or now 0.01?)
+//
 // TODO next I want to know the years and estimates of each table. Never search
 // by var.
 // - format table (for <=2 and >2)

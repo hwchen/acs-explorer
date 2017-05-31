@@ -425,12 +425,26 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
         code.push(record.variable.code.var_type.to_string());
         let code = code.concat();
 
-        res.push_str(&format!("{}: {}\n",
+        let label = record.variable.label.replace(":!!", "_").replace("'", "");
+        let label = to_camelcase(&label);
+
+        res.push_str(&format!("{}: {:?}\n",
             code,
-            record.variable.label,
+            label,
         )[..]);
     }
     res
+}
+
+fn to_camelcase(s: &str) -> String {
+    s.split_whitespace().map(|word| {
+        let mut c = word.chars();
+
+        match c.next() {
+            Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            None => String::new(),
+        }
+    }).collect()
 }
 
 #[cfg(test)]
