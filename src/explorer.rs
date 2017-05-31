@@ -50,6 +50,13 @@ use time;
 // - rename commands: describe, fetch, find, --table --label
 // - fix query order to match index
 // - reimplement the ToSql to be a more compact format
+//
+// TODO tomorrow:
+// - fix refresh to organize tables properly: table for table info (include
+//   years and acs?), table for vars (no years and acs)
+// - figure out where to compute acs and years per table (on refresh, do once)
+// - create indexes
+// - move sql to own mod
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
