@@ -2,6 +2,7 @@ use error::*;
 use nom::{alpha, digit, rest, space, IResult};
 use rusqlite;
 use rusqlite::types::{FromSql, FromSqlError,FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use std::cmp::Ordering;
 use std::fmt;
 use std::str;
 
@@ -174,7 +175,7 @@ impl ToString for TablePrefix {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VariableType {
     MarginOfError,
     Value,
@@ -262,9 +263,8 @@ impl FromSql for Estimate {
 //}
 
 pub fn format_table_records(records: Vec<TableRecord>) -> String {
-    use ::std::cmp::Ordering;
-
     let mut records = records;
+    // TODO move this to trait
     records.sort_by(|ref a, ref b| {
         if a.code.table_id != b.code.table_id {
             a.code.table_id.cmp(&b.code.table_id)
@@ -300,8 +300,61 @@ pub fn format_table_records(records: Vec<TableRecord>) -> String {
     res
 }
 
-//pub fn format_describe_table(
-//}
+pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
+    let mut records = records;
+
+    records.sort_by(|ref a, ref b| {
+        let ref a = a.variable.code;
+        let ref b = b.variable.code;
+
+        if a.table_code.table_id != b.table_code.table_id {
+            a.table_code.table_id.cmp(&b.table_code.table_id)
+        } else if a.table_code.prefix != b.table_code.prefix {
+            a.table_code.prefix.cmp(&b.table_code.prefix)
+        } else if a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
+            Ordering::Equal
+        } else if a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
+            Ordering::Less
+        } else if !a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
+            Ordering::Greater
+        } else if !a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
+            a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
+        } else if a.column_id != b.column_id {
+            a.column_id.cmp(&b.column_id)
+        } else if a.var_type != b.var_type {
+            a.var_type.cmp(&b.var_type)
+        } else {
+            Ordering::Equal
+        }
+    });
+    let mut res = "
+        code      | label\n\
+        ==========|====================\n\
+
+    ".to_owned();
+
+    for record in records {
+        let mut code = vec![
+            record.variable.code.table_code.prefix.to_string(),
+            record.variable.code.table_code.table_id,
+        ];
+        if let Some(suffix) = record.variable.code.table_code.suffix {
+            code.push(suffix);
+        }
+        code.push("_".to_owned());
+        code.push(record.variable.code.column_id);
+        code.push(record.variable.code.var_type.to_string());
+        let code = code.concat();
+
+        res.push_str(&format!("{:10}| {:5}| {:10}|{}\n",
+            code,
+            record.year,
+            record.estimate.to_string(),
+            record.variable.label,
+        )[..]);
+    }
+    res
+}
 
 #[cfg(test)]
 mod tests {

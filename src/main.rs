@@ -45,7 +45,7 @@ use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
 use explorer::Explorer;
 // temp
-use acs::{Estimate, format_table_records};
+use acs::{Estimate, format_table_records, format_describe_table};
 
 use std::env;
 use std::fs;
@@ -115,8 +115,8 @@ fn run() -> Result<()> {
             let suffix1 = suffix.clone();
 
             println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
-            let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1);
-            println!("{:?}", records);
+            let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1)?;
+            println!("{}", format_describe_table(records));
 
             let prefix = prefix.clone();
             let table_id = table_id.clone();
