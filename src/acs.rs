@@ -109,30 +109,42 @@ fn match_var_type(input: &[u8]) -> Result<VariableType> {
 
 // this is what gets stored in the database
 // Not for public access?
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableRecord {
     pub variable: Variable,
     pub estimate: Estimate,
     pub year: u32, // I just use one big table, denormalized
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
     pub label: String, // Encodes Hierarchy
     pub code: VariableCode,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableCode {
     pub table_code: TableCode,
     pub column_id: String,
     pub var_type: VariableType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TableRecord {
     pub code: TableCode,
     pub label: String,
+}
+
+impl Ord for TableRecord {
+    fn cmp(&self, other: &TableRecord) -> Ordering {
+        self.code.cmp(&other.code)
+    }
+}
+
+impl PartialOrd for TableRecord {
+    fn partial_cmp(&self, other: &TableRecord) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -141,6 +153,33 @@ pub struct TableCode {
     pub table_id: String,
     pub suffix: Option<String>, // should be limited to upper-case letters?
 }
+
+impl Ord for TableCode {
+    fn cmp(&self, other: &TableCode) -> Ordering {
+        if self.table_id != other.table_id {
+            self.table_id.cmp(&other.table_id)
+        } else if self.prefix != other.prefix {
+            self.prefix.cmp(&other.prefix)
+        } else if self.suffix.is_none() && other.suffix.is_none() {
+            Ordering::Equal
+        } else if self.suffix.is_none() && !other.suffix.is_none() {
+            Ordering::Less
+        } else if !self.suffix.is_none() && other.suffix.is_none() {
+            Ordering::Greater
+        } else if !self.suffix.is_none() && !other.suffix.is_none() {
+            self.suffix.as_ref().unwrap().cmp(&other.suffix.as_ref().unwrap())
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl PartialOrd for TableCode {
+    fn partial_cmp(&self, other: &TableCode) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TablePrefix {
@@ -208,7 +247,7 @@ impl ToString for VariableType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Estimate {
     OneYear,
     FiveYear,
@@ -253,35 +292,10 @@ impl FromSql for Estimate {
     }
 }
 
-//impl ToString for Estimate {
-//    fn to_string(&self) -> String {
-//        match *self {
-//            Estimate::OneYear => "acs1".to_owned(),
-//            Estimate::FiveYear => "acs5".to_owned(),
-//        }
-//    }
-//}
-
 pub fn format_table_records(records: Vec<TableRecord>) -> String {
     let mut records = records;
     // TODO move this to trait
-    records.sort_by(|ref a, ref b| {
-        if a.code.table_id != b.code.table_id {
-            a.code.table_id.cmp(&b.code.table_id)
-        } else if a.code.prefix != b.code.prefix {
-            a.code.prefix.cmp(&b.code.prefix)
-        } else if a.code.suffix.is_none() && b.code.suffix.is_none() {
-            Ordering::Equal
-        } else if a.code.suffix.is_none() && !b.code.suffix.is_none() {
-            Ordering::Less
-        } else if !a.code.suffix.is_none() && b.code.suffix.is_none() {
-            Ordering::Greater
-        } else if !a.code.suffix.is_none() && !b.code.suffix.is_none() {
-            a.code.suffix.as_ref().unwrap().cmp(&b.code.suffix.as_ref().unwrap())
-        } else {
-            Ordering::Equal
-        }
-    });
+    records.sort();
 
     let mut res = "code      | label\n==========|====================\n".to_owned();
 
