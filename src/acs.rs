@@ -116,10 +116,42 @@ pub struct VariableRecord {
     pub year: u32, // I just use one big table, denormalized
 }
 
+impl Ord for VariableRecord {
+    fn cmp(&self, other: &VariableRecord) -> Ordering {
+        if self.variable != other.variable {
+            self.variable.cmp(&other.variable)
+        } else if self.estimate != other.estimate {
+            self.estimate.cmp(&other.estimate)
+        } else if self.year != other.year {
+            self.year.cmp(&other.year)
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl PartialOrd for VariableRecord {
+    fn partial_cmp(&self, other: &VariableRecord) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
     pub label: String, // Encodes Hierarchy
     pub code: VariableCode,
+}
+
+impl Ord for Variable {
+    fn cmp(&self, other: &Variable) -> Ordering {
+        self.code.cmp(&other.code)
+    }
+}
+
+impl PartialOrd for Variable {
+    fn partial_cmp(&self, other: &Variable) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -127,6 +159,26 @@ pub struct VariableCode {
     pub table_code: TableCode,
     pub column_id: String,
     pub var_type: VariableType,
+}
+
+impl Ord for VariableCode {
+    fn cmp(&self, other: &VariableCode) -> Ordering {
+        if self.table_code != other.table_code {
+            self.table_code.cmp(&self.table_code)
+        } else if self.column_id != other.column_id {
+            self.column_id.cmp(&other.column_id)
+        } else if self.var_type != other.var_type {
+            self.var_type.cmp(&other.var_type)
+        } else {
+                Ordering::Equal
+        }
+    }
+}
+
+impl PartialOrd for VariableCode {
+    fn partial_cmp(&self, other: &VariableCode) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,7 +299,7 @@ impl ToString for VariableType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Estimate {
     OneYear,
     FiveYear,
@@ -294,7 +346,6 @@ impl FromSql for Estimate {
 
 pub fn format_table_records(records: Vec<TableRecord>) -> String {
     let mut records = records;
-    // TODO move this to trait
     records.sort();
 
     let mut res = "code      | label\n==========|====================\n".to_owned();
@@ -317,42 +368,8 @@ pub fn format_table_records(records: Vec<TableRecord>) -> String {
 pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
     let mut records = records;
 
-    records.sort_by(|ref a, ref b| {
-        let ref a = a.variable.code;
-        let ref b = b.variable.code;
+    records.sort();
 
-        if a.table_code.table_id != b.table_code.table_id {
-            a.table_code.table_id.cmp(&b.table_code.table_id)
-        } else if a.table_code.prefix != b.table_code.prefix {
-            a.table_code.prefix.cmp(&b.table_code.prefix)
-        } else if a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
-            if a.column_id != b.column_id {
-                a.column_id.cmp(&b.column_id)
-            } else if a.var_type != b.var_type {
-                a.var_type.cmp(&b.var_type)
-            } else {
-                    Ordering::Equal
-            }
-        } else if a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
-            Ordering::Less
-        } else if !a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
-            Ordering::Greater
-        } else if !a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
-            if a.table_code.suffix.as_ref().unwrap() != b.table_code.suffix.as_ref().unwrap() {
-                a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
-            } else {
-                if a.column_id != b.column_id {
-                    a.column_id.cmp(&b.column_id)
-                } else if a.var_type != b.var_type {
-                    a.var_type.cmp(&b.var_type)
-                } else {
-                    Ordering::Equal
-                }
-            }
-        } else {
-            Ordering::Equal
-        }
-    });
     let mut res = "
         code      | label\n\
         ==========|====================\n\
@@ -387,42 +404,7 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
 pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
     let mut records = records;
 
-    records.sort_by(|ref a, ref b| {
-        let ref a = a.variable.code;
-        let ref b = b.variable.code;
-
-        if a.table_code.table_id != b.table_code.table_id {
-            a.table_code.table_id.cmp(&b.table_code.table_id)
-        } else if a.table_code.prefix != b.table_code.prefix {
-            a.table_code.prefix.cmp(&b.table_code.prefix)
-        } else if a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
-            if a.column_id != b.column_id {
-                a.column_id.cmp(&b.column_id)
-            } else if a.var_type != b.var_type {
-                a.var_type.cmp(&b.var_type)
-            } else {
-                    Ordering::Equal
-            }
-        } else if a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
-            Ordering::Less
-        } else if !a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
-            Ordering::Greater
-        } else if !a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
-            if a.table_code.suffix.as_ref().unwrap() != b.table_code.suffix.as_ref().unwrap() {
-                a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
-            } else {
-                if a.column_id != b.column_id {
-                    a.column_id.cmp(&b.column_id)
-                } else if a.var_type != b.var_type {
-                    a.var_type.cmp(&b.var_type)
-                } else {
-                    Ordering::Equal
-                }
-            }
-        } else {
-            Ordering::Equal
-        }
-    });
+    records.sort();
 
     let records = records.into_iter().filter(|record| {
         let last = record.variable.label.len();
