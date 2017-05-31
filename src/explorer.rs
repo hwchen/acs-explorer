@@ -135,33 +135,38 @@ impl Explorer {
             }
         }
 
-        let db_tx = self.db_client.transaction()?;
+        {
+            let db_tx = self.db_client.transaction()?;
 
-        for (code, label) in table_map.iter() {
-            let mut insert = db_tx.prepare_cached(
-                "INSERT INTO acs_tables (
-                    prefix,
-                    table_id,
-                    suffix,
-                    label
-                ) VALUES (
-                    ?1, ?2, ?3, ?4
-                )"
-            ).chain_err(|| "Error preparing acs_tables insert")?;
+            for (code, label) in table_map.iter() {
+                let mut insert = db_tx.prepare_cached(
+                    "INSERT INTO acs_tables (
+                        prefix,
+                        table_id,
+                        suffix,
+                        label
+                    ) VALUES (
+                        ?1, ?2, ?3, ?4
+                    )"
+                ).chain_err(|| "Error preparing acs_tables insert")?;
 
-            insert.execute(
-                &[
-                    &code.prefix,
-                    &code.table_id,
-                    &code.suffix,
-                    label,
-                ]
-            ).chain_err(|| "Error executing acs_tables insert")?;
+                insert.execute(
+                    &[
+                        &code.prefix,
+                        &code.table_id,
+                        &code.suffix,
+                        label,
+                    ]
+                ).chain_err(|| "Error executing acs_tables insert")?;
+            }
+
+            db_tx.commit()?;
         }
 
-        db_tx.commit()?;
-
-        // TODO print stats after a refresh
+        self.db_client.execute_batch("
+            CREATE INDEX acs_vars_id_idx on acs_vars (table_id, prefix, suffix);
+            CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
+        ").chain_err(|| "Error creating indexes")?;
 
         Ok(())
     }
