@@ -34,6 +34,12 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             .arg(Arg::with_name("describe_table")
                 .takes_value(true)
                 .help("enter table id to describe")))
+        .subcommand(SubCommand::with_name("etl")
+            .about("Generate config for etl")
+            .alias("e")
+            .arg(Arg::with_name("etl_config")
+                .takes_value(true)
+                .help("enter table id of table to get etl config")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
         .after_help("Table ID search (find table subcommand):\n\
@@ -115,6 +121,30 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                     options: None,
                 })
         },
+        ("etl", Some(sub_m)) => {
+            if sub_m.is_present("verbose") { verbose = true; }
+
+                let query = sub_m
+                    .value_of("etl_config")
+                    .ok_or("Table id required for query")?;
+
+                let query = parse_table_query(query.as_bytes())
+                    .to_result()
+                    .map_err(|_| format!(
+                        "{:?} is not a valid Table ID format, see --help",
+                        query)
+                    )?;
+
+                if query.prefix.is_none() {
+                    return Err("Prefix required for table code".into());
+                }
+
+                Ok(ExplorerCommand {
+                    command: Command::Etl(query),
+                    verbose: verbose,
+                    options: None,
+                })
+        },
         ("refresh", Some(sub_m)) => {
             if sub_m.is_present("verbose") { verbose = true; }
 
@@ -140,6 +170,7 @@ pub enum Command {
     Refresh,
     FindTable(FindTableQuery),
     DescribeTable(TableIdQuery),
+    Etl(TableIdQuery),
     FetchTable, // all, by year, acs estimate
 }
 

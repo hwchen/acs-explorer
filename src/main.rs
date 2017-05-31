@@ -45,7 +45,7 @@ use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
 use explorer::Explorer;
 // temp
-use acs::{Estimate, format_table_records, format_describe_table};
+use acs::{Estimate, format_table_records, format_describe_table, format_etl_config};
 
 use std::env;
 use std::fs;
@@ -117,6 +117,23 @@ fn run() -> Result<()> {
             println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
             let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1)?;
             println!("{}", format_describe_table(records));
+
+            let prefix = prefix.clone();
+            let table_id = table_id.clone();
+            let suffix = suffix.clone();
+
+            let table_info = explorer.query_by_table_id(prefix, table_id, suffix)?;
+            println!("{:?}", table_info.get(0));
+        },
+        Etl(TableIdQuery {prefix, table_id, suffix}) => {
+            // TODO clean this up
+            let prefix1 = prefix.clone();
+            let table_id1 = table_id.clone();
+            let suffix1 = suffix.clone();
+
+            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
+            let records = explorer.etl_config(prefix1.unwrap(), table_id1, suffix1)?;
+            println!("{}", format_etl_config(records));
 
             let prefix = prefix.clone();
             let table_id = table_id.clone();

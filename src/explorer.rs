@@ -516,4 +516,16 @@ impl Explorer {
 
     }
 
+    pub fn etl_config(
+        &mut self,
+        prefix: TablePrefix,
+        table_id: String,
+        suffix: Option<String>,
+        ) -> Result<Vec<VariableRecord>>
+    {
+        // not as efficient, but better for LOC.
+        let records = self.describe_table(prefix, table_id, suffix)?;
+        Ok(records.iter().filter(|record| record.year == 2015).cloned().collect())
+
+    }
 }

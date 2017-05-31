@@ -312,17 +312,29 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
         } else if a.table_code.prefix != b.table_code.prefix {
             a.table_code.prefix.cmp(&b.table_code.prefix)
         } else if a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
-            Ordering::Equal
+            if a.column_id != b.column_id {
+                a.column_id.cmp(&b.column_id)
+            } else if a.var_type != b.var_type {
+                a.var_type.cmp(&b.var_type)
+            } else {
+                    Ordering::Equal
+            }
         } else if a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
             Ordering::Less
         } else if !a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
             Ordering::Greater
         } else if !a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
-            a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
-        } else if a.column_id != b.column_id {
-            a.column_id.cmp(&b.column_id)
-        } else if a.var_type != b.var_type {
-            a.var_type.cmp(&b.var_type)
+            if a.table_code.suffix.as_ref().unwrap() != b.table_code.suffix.as_ref().unwrap() {
+                a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
+            } else {
+                if a.column_id != b.column_id {
+                    a.column_id.cmp(&b.column_id)
+                } else if a.var_type != b.var_type {
+                    a.var_type.cmp(&b.var_type)
+                } else {
+                    Ordering::Equal
+                }
+            }
         } else {
             Ordering::Equal
         }
@@ -350,6 +362,71 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
             code,
             record.year,
             record.estimate.to_string(),
+            record.variable.label,
+        )[..]);
+    }
+    res
+}
+
+// TODO move all this processing into sql query
+// or at least refactor with format_describe
+pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
+    let mut records = records;
+
+    records.sort_by(|ref a, ref b| {
+        let ref a = a.variable.code;
+        let ref b = b.variable.code;
+
+        if a.table_code.table_id != b.table_code.table_id {
+            a.table_code.table_id.cmp(&b.table_code.table_id)
+        } else if a.table_code.prefix != b.table_code.prefix {
+            a.table_code.prefix.cmp(&b.table_code.prefix)
+        } else if a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
+            if a.column_id != b.column_id {
+                a.column_id.cmp(&b.column_id)
+            } else if a.var_type != b.var_type {
+                a.var_type.cmp(&b.var_type)
+            } else {
+                    Ordering::Equal
+            }
+        } else if a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
+            Ordering::Less
+        } else if !a.table_code.suffix.is_none() && b.table_code.suffix.is_none() {
+            Ordering::Greater
+        } else if !a.table_code.suffix.is_none() && !b.table_code.suffix.is_none() {
+            if a.table_code.suffix.as_ref().unwrap() != b.table_code.suffix.as_ref().unwrap() {
+                a.table_code.suffix.as_ref().unwrap().cmp(&b.table_code.suffix.as_ref().unwrap())
+            } else {
+                if a.column_id != b.column_id {
+                    a.column_id.cmp(&b.column_id)
+                } else if a.var_type != b.var_type {
+                    a.var_type.cmp(&b.var_type)
+                } else {
+                    Ordering::Equal
+                }
+            }
+        } else {
+            Ordering::Equal
+        }
+    });
+
+    let records = records.into_iter().filter(|record| {
+        let last = record.variable.label.len();
+
+        &record.variable.label.as_bytes()[last-1..] != &b":"[..] &&
+        record.variable.code.var_type == VariableType::Value &&
+        record.estimate == Estimate::FiveYear
+    });
+    let mut res = String::new();
+
+    for record in records {
+        let mut code = Vec::new();
+        code.push(record.variable.code.column_id);
+        code.push(record.variable.code.var_type.to_string());
+        let code = code.concat();
+
+        res.push_str(&format!("{}: {}\n",
+            code,
             record.variable.label,
         )[..]);
     }
