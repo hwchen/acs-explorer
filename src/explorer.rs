@@ -5,7 +5,7 @@ use json;
 use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -265,6 +265,8 @@ impl Explorer {
         let data = json::parse(&vars_data)
             .chain_err(|| "error parsing json response")?;
 
+        let mut est_years_set = HashSet::new();
+
         let db_tx = self.db_client.transaction()?;
 
         let mut count = 0;
@@ -286,7 +288,38 @@ impl Explorer {
                 .to_result()
                 .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
 
-            // write estimate and year here, not later
+            // put code/label in map for later writing
+            // (removes duplication)
+            if let None = vars_map.get(&code) {
+                vars_map.insert(code, acs_info["label"].to_string());
+            };
+
+            // parse table code
+            // Read table into table_map for later writing to db
+            // Read table code into est_vars_map (local) for writing
+            // into db at end of this fn.
+            let table_str = acs_info["concept"].to_string();
+            let table_record = parse_table_record(table_str.as_bytes())
+                .to_result()
+                .chain_err(|| format!("Error parsing table str {}", table_str))?;
+
+            // Can I get rid of this clone? Probably, but
+            // more complicated. The HashSet only lives to
+            // the end of this fn.
+            est_years_set.insert(table_record.code.clone());
+
+            // read into table_map for later writing to db
+            if let None = table_map.get(&table_record.code) {
+                table_map.insert(
+                    table_record.code,
+                    table_record.label,
+                );
+            };
+
+            count += 1;
+        }
+        for code in est_years_set {
+            // write years and est per table
             let mut insert = db_tx.prepare_cached(
                 "INSERT INTO acs_est_years (
                     prefix,
@@ -296,38 +329,18 @@ impl Explorer {
                     year
                 ) VALUES (
                     ?1, ?2, ?3, ?4, ?5
-                )").chain_err(|| "Error preparing acs_est_years insert")?;
+                )"
+            ).chain_err(|| "Error preparing acs_est_years insert")?;
 
             insert.execute(
                 &[
-                    &code.table_code.prefix,
-                    &code.table_code.table_id,
-                    &code.table_code.suffix,
+                    &code.prefix,
+                    &code.table_id,
+                    &code.suffix,
                     estimate,
-                    &(year as u32)
+                    &(year as u32),
                 ]
             ).chain_err(|| "Error executing acs_est_years insert")?;
-
-            // put code/label in map for later writing
-            // (removes duplication)
-            if let None = vars_map.get(&code) {
-                vars_map.insert(code, acs_info["label"].to_string());
-            };
-
-            // Read table into table_map for later writing to db
-            let table_str = acs_info["concept"].to_string();
-            let table_record = parse_table_record(table_str.as_bytes())
-                .to_result()
-                .chain_err(|| format!("Error parsing table str {}", table_str))?;
-
-            if let None = table_map.get(&table_record.code) {
-                table_map.insert(
-                    table_record.code,
-                    table_record.label,
-                );
-            };
-
-            count += 1;
         }
 
         db_tx.commit()?;
