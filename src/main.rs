@@ -101,6 +101,7 @@ fn run() -> Result<()> {
     use FindTableQuery::*;
     match command.command {
         Refresh => {
+            println!("Refreshing...");
             let current_year = time::now().tm_year as usize + 1900;
 
             let start = time::precise_time_s();
@@ -109,21 +110,18 @@ fn run() -> Result<()> {
             println!("Overall refresh time: {}", end - start);
         },
         FindTable(ByTableId(TableIdQuery {prefix, table_id, suffix})) => {
-            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
-            let records = explorer.query_by_table_id(prefix, table_id, suffix)?;
+            let records = explorer.query_by_table_id(&prefix, &table_id, &suffix)?;
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable{ query, etl_config, pretty} => {
+        DescribeTable{ ref query, etl_config, pretty} => {
 
-            // TODO clean this up
-            let prefix1 = query.prefix.clone();
-            let table_id1 = query.table_id.clone();
-            let suffix1 = query.suffix.clone();
-
-            println!("Query: {:?}, {}, {:?}, etl: {}, pretty: {}\n",
-                prefix1, table_id1, suffix1, etl_config, pretty);
-            let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1)?;
+            // prefix checked to be Some already, so can unwrap
+            let records = explorer.describe_table(
+                query.prefix.as_ref().unwrap(),
+                &query.table_id,
+                &query.suffix,
+            )?;
 
             // from cli, etl_config and pretty are guaranteed to not both be true at same time.
             let out = if etl_config {
@@ -135,11 +133,10 @@ fn run() -> Result<()> {
             };
             println!("{}", out);
 
-            let prefix = query.prefix.clone();
-            let table_id = query.table_id.clone();
-            let suffix = query.suffix.clone();
-
-            let table_info = explorer.query_by_table_id(prefix, table_id, suffix)?;
+            let table_info = explorer.query_by_table_id(
+                &query.prefix,
+                &query.table_id,
+                &query.suffix)?;
             println!("{:?}", table_info.get(0));
         },
         FetchTable => println!("a variable query"),

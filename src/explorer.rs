@@ -339,13 +339,13 @@ impl Explorer {
 
     pub fn query_by_table_id(
         &mut self,
-        prefix: Option<TablePrefix>,
-        table_id: String,
-        suffix: Option<String>
+        prefix: &Option<TablePrefix>,
+        table_id: &str,
+        suffix: &Option<String>
         ) -> Result<Vec<TableRecord>>
     {
-        if let Some(prefix) = prefix {
-            if let Some(suffix) = suffix {
+        if let Some(ref prefix) = *prefix {
+            if let Some(ref suffix) = *suffix {
                 // has both prefix and suffix
                 let mut query = self.db_client.prepare(
                 "SELECT prefix, table_id, suffix, label
@@ -354,7 +354,7 @@ impl Explorer {
                         AND suffix = ?2
                         AND table_id = ?3
                 ")?;
-                let records = query.query_map(&[&prefix, &suffix, &table_id], |row| {
+                let records = query.query_map(&[prefix, suffix, &table_id], |row| {
                     TableRecord {
                         code: TableCode {
                             prefix: row.get(0),
@@ -378,7 +378,7 @@ impl Explorer {
                     WHERE prefix = ?1
                         AND table_id = ?2
                 ")?;
-                let records = query.query_map(&[&prefix, &table_id], |row| {
+                let records = query.query_map(&[prefix, &table_id], |row| {
                     TableRecord {
                         code: TableCode {
                             prefix: row.get(0),
@@ -396,7 +396,7 @@ impl Explorer {
                 Ok(res)
             }
         } else {
-            if let Some(suffix) = suffix {
+            if let Some(ref suffix) = *suffix {
                 // has suffix but no prefix
                 let mut query = self.db_client.prepare(
                 "SELECT prefix, table_id, suffix, label
@@ -404,7 +404,7 @@ impl Explorer {
                     WHERE suffix = ?1
                         AND table_id = ?2
                 ")?;
-                let records = query.query_map(&[&suffix, &table_id], |row| {
+                let records = query.query_map(&[suffix, &table_id], |row| {
                     TableRecord {
                         code: TableCode {
                             prefix: row.get(0),
@@ -450,9 +450,9 @@ impl Explorer {
 
     pub fn describe_table(
         &mut self,
-        prefix: TablePrefix,
-        table_id: String,
-        suffix: Option<String>,
+        prefix: &TablePrefix,
+        table_id: &str,
+        suffix: &Option<String>,
         ) -> Result<Vec<VariableRecord>>
     {
         let sql_str = "
@@ -473,7 +473,7 @@ impl Explorer {
         // args
         if !suffix.is_none() {
             let start = time::precise_time_s();
-            let vars = query.query_map(&[&table_id, &prefix, &suffix], |row| {
+            let vars = query.query_map(&[&table_id, prefix, suffix], |row| {
                 VariableRecord {
                     label: row.get(5),
                     code: VariableCode {
@@ -494,7 +494,7 @@ impl Explorer {
                 where table_id = ?1 and prefix = ?2 and suffix is null
             ")?;
 
-            let count: u32 = query.query_row(&[&table_id, &prefix], |row| {
+            let count: u32 = query.query_row(&[&table_id, prefix], |row| {
                 row.get(0)
             })?;
 
@@ -510,7 +510,7 @@ impl Explorer {
             Ok(res)
         } else {
             let start = time::precise_time_s();
-            let vars = query.query_map(&[&table_id, &prefix], |row| {
+            let vars = query.query_map(&[&table_id, prefix], |row| {
                 VariableRecord {
                     label: row.get(5),
                     code: VariableCode {
@@ -531,7 +531,7 @@ impl Explorer {
                 where table_id = ?1 and prefix = ?2 and suffix is null
             ")?;
 
-            let count: u32 = query.query_row(&[&table_id, &prefix], |row| {
+            let count: u32 = query.query_row(&[&table_id, prefix], |row| {
                 row.get(0)
             })?;
 
