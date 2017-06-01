@@ -45,20 +45,14 @@ use time;
 //
 // TODO next I want to know the years and estimates of each table. Never search
 // by var.
-// - format table (for <=2 and >2)
-// - sqlite composite index and foreign key, merge tables?
-// - separate Command from Option in cli! return a tuple of both. Then
-//   command can be sent in, and options simply parsed.
 // - rename commands: describe, fetch, find, --table --label
-// - fix query order to match index
 // - reimplement the ToSql to be a more compact format
 //
-// TODO tomorrow:
-// - fix refresh to organize tables properly: table for table info (include
-//   years and acs?), table for vars (no years and acs)
-// - figure out where to compute acs and years per table (on refresh, do once)
-// - create indexes
 // - move sql to own mod
+// - improve formatting (prettier, showing levels better for describe)
+//
+// - don't change search (by table_id) right now? In the future, use a search
+//   engine to give a drop-down list of choices.
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";

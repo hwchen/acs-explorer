@@ -183,11 +183,11 @@ named!(parse_table_query<&[u8], TableIdQuery>,
 
 named!(parse_prefix_query<&[u8], Option<TablePrefix> >,
     opt!(do_parse!(
-        prefix: alt!(tag!("B") | tag!("C")) >>
+        prefix: alt!(tag!("B") | tag!("b") | tag!("C") | tag!("c")) >>
 
         (match prefix {
-            b"B" => TablePrefix::B,
-            b"C" => TablePrefix::C,
+            b"B" | b"b" => TablePrefix::B,
+            b"C" | b"c" => TablePrefix::C,
             _ => TablePrefix::B, // TODO Fix error handling later
         })
     ))
