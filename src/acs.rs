@@ -341,11 +341,7 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
 
     records.sort();
 
-    let mut res = "
-        code      | label\n\
-        ==========|====================\n\
-
-    ".to_owned();
+    let mut res = String::new();
 
     for record in records {
         let mut code = vec![
@@ -355,17 +351,66 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
         if let Some(suffix) = record.code.table_code.suffix {
             code.push(suffix);
         }
-        code.push("_".to_owned());
+        code.push(", ".to_owned());
         code.push(record.code.column_id);
         code.push(record.code.var_type.to_string());
         let code = code.concat();
 
-        res.push_str(&format!("{:13}| {}\n",
+        res.push_str(&format!("{}| {}\n",
             code,
             record.label,
         )[..]);
     }
     res
+}
+
+pub fn format_describe_table_pretty(records: Vec<VariableRecord>) -> String {
+    let mut records = records;
+
+    records.sort();
+
+    let indent = "    ";
+
+    let mut res = "\n\
+        code | label\n\
+        =====|====================================\n\
+
+    ".to_owned();
+
+    let records = records.into_iter().filter(|ref record| {
+        record.code.var_type == VariableType::Value
+    });
+    for record in records {
+        let col_id = record.code.column_id;
+
+        // format label by only showing the last part of label,
+        // with appropriate indentation
+
+        // find index to slice at
+        let split_index = match record.label.rfind(":!!") {
+            Some(i) => i + 3,
+            None => 0,
+        };
+
+        let (indents, label) = record.label.split_at(split_index);
+
+        // There's an extra :!! at the end of indents. So
+        // skip1
+        let indents: String = indents.split(":!!").skip(1)
+            .map(|_| indent)
+            .collect();
+
+        let label = label.trim_right_matches(":");
+
+
+        res.push_str(&format!("{:5}| {}{}\n",
+            col_id,
+            indents,
+            label,
+        )[..]);
+    }
+    res
+
 }
 
 // TODO move all this processing into sql query

@@ -48,7 +48,6 @@ use time;
 // - rename commands: describe, fetch, find, --table --label
 // - reimplement the ToSql to be a more compact format
 //
-// - move sql to own mod
 // - improve formatting (prettier, showing levels better for describe)
 //
 // - don't change search (by table_id) right now? In the future, use a search

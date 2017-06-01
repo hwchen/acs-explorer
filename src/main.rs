@@ -45,7 +45,13 @@ use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
 use explorer::Explorer;
 // temp
-use acs::{Estimate, format_table_records, format_describe_table, format_etl_config};
+use acs::{
+    Estimate,
+    format_table_records,
+    format_describe_table,
+    format_describe_table_pretty,
+    format_etl_config,
+};
 
 use std::env;
 use std::fs;
@@ -108,19 +114,24 @@ fn run() -> Result<()> {
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable{ query, etl_config, } => {
+        DescribeTable{ query, etl_config, pretty} => {
 
             // TODO clean this up
             let prefix1 = query.prefix.clone();
             let table_id1 = query.table_id.clone();
             let suffix1 = query.suffix.clone();
 
-            println!("Query: {:?}, {}, {:?}, etl: {}\n", prefix1, table_id1, suffix1, etl_config);
+            println!("Query: {:?}, {}, {:?}, etl: {}, pretty: {}\n",
+                prefix1, table_id1, suffix1, etl_config, pretty);
             let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1)?;
-            let out = if !etl_config {
-                format_describe_table(records)
-            } else {
+
+            // from cli, etl_config and pretty are guaranteed to not both be true at same time.
+            let out = if etl_config {
                 format_etl_config(records)
+            } else if pretty {
+                format_describe_table_pretty(records)
+            } else {
+                format_describe_table(records)
             };
             println!("{}", out);
 
