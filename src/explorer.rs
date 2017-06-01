@@ -52,6 +52,9 @@ use time;
 //
 // - don't change search (by table_id) right now? In the future, use a search
 //   engine to give a drop-down list of choices.
+//
+// - Figure out how to keep hashmap in order (ordermap)
+// - have switches for showing label name and est_years
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";

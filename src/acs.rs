@@ -3,6 +3,7 @@ use nom::{alpha, digit, rest, space, IResult};
 use rusqlite;
 use rusqlite::types::{FromSql, FromSqlError,FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fmt;
 use std::str;
 
@@ -441,6 +442,14 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
             code,
             label,
         )[..]);
+    }
+    res
+}
+
+pub fn format_est_years(est_years: &HashMap<Estimate, Vec<u32>>) -> String {
+    let mut res = String::new();
+    for (estimate, years) in est_years.iter() {
+        res.push_str(&format!("{}: {:?}\n", estimate, years)[..]);
     }
     res
 }

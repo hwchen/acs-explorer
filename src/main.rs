@@ -51,6 +51,7 @@ use acs::{
     format_table_name,
     format_describe_table,
     format_describe_table_pretty,
+    format_est_years,
     format_etl_config,
 };
 
@@ -148,7 +149,7 @@ fn run() -> Result<()> {
                 &query.table_id,
                 &query.suffix
             )?;
-            println!("{:?}", est_years);
+            println!("{}", format_est_years(&est_years));
         },
         FetchTable => println!("a variable query"),
     }
