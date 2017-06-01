@@ -33,13 +33,11 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             .alias("d")
             .arg(Arg::with_name("describe_table")
                 .takes_value(true)
-                .help("enter table id to describe")))
-        .subcommand(SubCommand::with_name("etl")
-            .about("Generate config for etl")
-            .alias("e")
+                .help("enter table id to describe"))
             .arg(Arg::with_name("etl_config")
-                .takes_value(true)
-                .help("enter table id of table to get etl config")))
+                .short("e")
+                .long("etl")
+                .help("format results to etl config")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
         .after_help("Table ID search (find table subcommand):\n\
@@ -50,8 +48,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
 
     // for global flags. Check at each level/subcommand if the flag is present,
     // then flip switch.
-    let mut verbose = false;
-    if app_m.is_present("verbose") { verbose = true; }
+    let mut verbose = app_m.is_present("verbose");
 
     // Now section on matching subcommands and flags
     match app_m.subcommand() {
@@ -76,7 +73,6 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                             FindTableQuery::ByTableId( query )
                         ),
                         verbose: verbose,
-                        options: None,
                     })
                 },
                 ("label", Some(sub_m)) => {
@@ -91,7 +87,6 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                             FindTableQuery::ByLabel( query.to_owned() )
                         ),
                         verbose:verbose,
-                        options: None,
                     })
                 },
                 _ => Err("Not a valid subcommand".into()),
@@ -100,50 +95,30 @@ pub fn cli_command() -> Result<ExplorerCommand> {
         ("describe", Some(sub_m)) => {
             if sub_m.is_present("verbose") { verbose = true; }
 
-                let query = sub_m
-                    .value_of("describe_table")
-                    .ok_or("Table id required for query")?;
+            let etl_config = sub_m.is_present("etl_config");
 
-                let query = parse_table_query(query.as_bytes())
-                    .to_result()
-                    .map_err(|_| format!(
-                        "{:?} is not a valid Table ID format, see --help",
-                        query)
-                    )?;
+            let query = sub_m
+                .value_of("describe_table")
+                .ok_or("Table id required for query")?;
 
-                if query.prefix.is_none() {
-                    return Err("Prefix required for table code".into());
-                }
+            let query = parse_table_query(query.as_bytes())
+                .to_result()
+                .map_err(|_| format!(
+                    "{:?} is not a valid Table ID format, see --help",
+                    query)
+                )?;
 
-                Ok(ExplorerCommand {
-                    command: Command::DescribeTable(query),
-                    verbose: verbose,
-                    options: None,
-                })
-        },
-        ("etl", Some(sub_m)) => {
-            if sub_m.is_present("verbose") { verbose = true; }
+            if query.prefix.is_none() {
+                return Err("Prefix required for table code".into());
+            }
 
-                let query = sub_m
-                    .value_of("etl_config")
-                    .ok_or("Table id required for query")?;
-
-                let query = parse_table_query(query.as_bytes())
-                    .to_result()
-                    .map_err(|_| format!(
-                        "{:?} is not a valid Table ID format, see --help",
-                        query)
-                    )?;
-
-                if query.prefix.is_none() {
-                    return Err("Prefix required for table code".into());
-                }
-
-                Ok(ExplorerCommand {
-                    command: Command::Etl(query),
-                    verbose: verbose,
-                    options: None,
-                })
+            Ok(ExplorerCommand {
+                command: Command::DescribeTable{
+                    query: query,
+                    etl_config: etl_config,
+                },
+                verbose: verbose,
+            })
         },
         ("refresh", Some(sub_m)) => {
             if sub_m.is_present("verbose") { verbose = true; }
@@ -151,7 +126,6 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             Ok(ExplorerCommand {
                 command: Command::Refresh,
                 verbose: verbose,
-                options: None,
             })
         },
         _ => Err("Not a valid subcommand".into()),
@@ -162,15 +136,16 @@ pub fn cli_command() -> Result<ExplorerCommand> {
 pub struct ExplorerCommand {
     pub command: Command,
     pub verbose: bool,
-    pub options: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Refresh,
     FindTable(FindTableQuery),
-    DescribeTable(TableIdQuery),
-    Etl(TableIdQuery),
+    DescribeTable {
+        query: TableIdQuery,
+        etl_config: bool,
+    },
     FetchTable, // all, by year, acs estimate
 }
 

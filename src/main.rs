@@ -108,36 +108,25 @@ fn run() -> Result<()> {
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable(TableIdQuery {prefix, table_id, suffix}) => {
-            // TODO clean this up
-            let prefix1 = prefix.clone();
-            let table_id1 = table_id.clone();
-            let suffix1 = suffix.clone();
+        DescribeTable{ query, etl_config, } => {
 
-            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
+            // TODO clean this up
+            let prefix1 = query.prefix.clone();
+            let table_id1 = query.table_id.clone();
+            let suffix1 = query.suffix.clone();
+
+            println!("Query: {:?}, {}, {:?}, etl: {}\n", prefix1, table_id1, suffix1, etl_config);
             let records = explorer.describe_table(prefix1.unwrap(), table_id1, suffix1)?;
-            println!("{}", format_describe_table(records));
+            let out = if !etl_config {
+                format_describe_table(records)
+            } else {
+                format_etl_config(records)
+            };
+            println!("{}", out);
 
-            let prefix = prefix.clone();
-            let table_id = table_id.clone();
-            let suffix = suffix.clone();
-
-            let table_info = explorer.query_by_table_id(prefix, table_id, suffix)?;
-            println!("{:?}", table_info.get(0));
-        },
-        Etl(TableIdQuery {prefix, table_id, suffix}) => {
-            // TODO clean this up
-            let prefix1 = prefix.clone();
-            let table_id1 = table_id.clone();
-            let suffix1 = suffix.clone();
-
-            println!("Query: {:?}, {}, {:?}\n", prefix, table_id, suffix);
-            let records = explorer.etl_config(prefix1.unwrap(), table_id1, suffix1)?;
-            println!("{}", format_etl_config(records));
-
-            let prefix = prefix.clone();
-            let table_id = table_id.clone();
-            let suffix = suffix.clone();
+            let prefix = query.prefix.clone();
+            let table_id = query.table_id.clone();
+            let suffix = query.suffix.clone();
 
             let table_info = explorer.query_by_table_id(prefix, table_id, suffix)?;
             println!("{:?}", table_info.get(0));

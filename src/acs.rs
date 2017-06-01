@@ -107,49 +107,20 @@ fn match_var_type(input: &[u8]) -> Result<VariableType> {
     }
 }
 
-// this is what gets stored in the database
-// Not for public access?
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableRecord {
-    pub variable: Variable,
-    pub estimate: Estimate,
-    pub year: u32, // I just use one big table, denormalized
+    pub label: String, // Encodes Hierarchy
+    pub code: VariableCode,
 }
 
 impl Ord for VariableRecord {
     fn cmp(&self, other: &VariableRecord) -> Ordering {
-        if self.variable != other.variable {
-            self.variable.cmp(&other.variable)
-        } else if self.estimate != other.estimate {
-            self.estimate.cmp(&other.estimate)
-        } else if self.year != other.year {
-            self.year.cmp(&other.year)
-        } else {
-            Ordering::Equal
-        }
+        self.code.cmp(&other.code)
     }
 }
 
 impl PartialOrd for VariableRecord {
     fn partial_cmp(&self, other: &VariableRecord) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Variable {
-    pub label: String, // Encodes Hierarchy
-    pub code: VariableCode,
-}
-
-impl Ord for Variable {
-    fn cmp(&self, other: &Variable) -> Ordering {
-        self.code.cmp(&other.code)
-    }
-}
-
-impl PartialOrd for Variable {
-    fn partial_cmp(&self, other: &Variable) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
@@ -378,22 +349,20 @@ pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
 
     for record in records {
         let mut code = vec![
-            record.variable.code.table_code.prefix.to_string(),
-            record.variable.code.table_code.table_id,
+            record.code.table_code.prefix.to_string(),
+            record.code.table_code.table_id,
         ];
-        if let Some(suffix) = record.variable.code.table_code.suffix {
+        if let Some(suffix) = record.code.table_code.suffix {
             code.push(suffix);
         }
         code.push("_".to_owned());
-        code.push(record.variable.code.column_id);
-        code.push(record.variable.code.var_type.to_string());
+        code.push(record.code.column_id);
+        code.push(record.code.var_type.to_string());
         let code = code.concat();
 
-        res.push_str(&format!("{:10}| {:5}| {:10}|{}\n",
+        res.push_str(&format!("{:13}| {}\n",
             code,
-            record.year,
-            record.estimate.to_string(),
-            record.variable.label,
+            record.label,
         )[..]);
     }
     res
@@ -407,21 +376,19 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
     records.sort();
 
     let records = records.into_iter().filter(|record| {
-        let last = record.variable.label.len();
+        let last = record.label.len();
 
-        &record.variable.label.as_bytes()[last-1..] != &b":"[..] &&
-        record.variable.code.var_type == VariableType::Value &&
-        record.estimate == Estimate::FiveYear
+        &record.label.as_bytes()[last-1..] != &b":"[..]
     });
     let mut res = String::new();
 
     for record in records {
         let mut code = Vec::new();
-        code.push(record.variable.code.column_id);
-        code.push(record.variable.code.var_type.to_string());
+        code.push(record.code.column_id);
+        code.push(record.code.var_type.to_string());
         let code = code.concat();
 
-        let label = record.variable.label.replace(":!!", "_").replace("'", "");
+        let label = record.label.replace(":!!", "_").replace("'", "");
         let label = to_camelcase(&label);
 
         res.push_str(&format!("{}: {:?}\n",

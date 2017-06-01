@@ -464,7 +464,7 @@ impl Explorer {
     {
         let sql_str = "
             SELECT prefix, table_id, suffix,
-                column_id, var_type, year, estimate, label
+                column_id, var_type, label
             from acs_vars
             where table_id = ?1 and prefix = ?2 and suffix
         ";
@@ -482,20 +482,16 @@ impl Explorer {
             let start = time::precise_time_s();
             let vars = query.query_map(&[&table_id, &prefix, &suffix], |row| {
                 VariableRecord {
-                    variable: Variable {
-                        label: row.get(7),
-                        code: VariableCode {
-                            table_code: TableCode {
-                                prefix: row.get(0),
-                                table_id: row.get(1),
-                                suffix: row.get(2),
-                            },
-                            column_id: row.get(3),
-                            var_type: row.get(4),
-                        }
-                    },
-                    estimate: row.get(6),
-                    year: row.get(5),
+                    label: row.get(5),
+                    code: VariableCode {
+                        table_code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        column_id: row.get(3),
+                        var_type: row.get(4),
+                    }
                 }
             })?;
 
@@ -523,20 +519,16 @@ impl Explorer {
             let start = time::precise_time_s();
             let vars = query.query_map(&[&table_id, &prefix], |row| {
                 VariableRecord {
-                    variable: Variable {
-                        label: row.get(7),
-                        code: VariableCode {
-                            table_code: TableCode {
-                                prefix: row.get(0),
-                                table_id: row.get(1),
-                                suffix: row.get(2),
-                            },
-                            column_id: row.get(3),
-                            var_type: row.get(4),
-                        }
-                    },
-                    estimate: row.get(6),
-                    year: row.get(5),
+                    label: row.get(5),
+                    code: VariableCode {
+                        table_code: TableCode {
+                            prefix: row.get(0),
+                            table_id: row.get(1),
+                            suffix: row.get(2),
+                        },
+                        column_id: row.get(3),
+                        var_type: row.get(4),
+                    }
                 }
             })?;
 
@@ -560,19 +552,6 @@ impl Explorer {
             println!("query time and collecting for vars: {}", end - start);
             Ok(res)
         }
-
-    }
-
-    pub fn etl_config(
-        &mut self,
-        prefix: TablePrefix,
-        table_id: String,
-        suffix: Option<String>,
-        ) -> Result<Vec<VariableRecord>>
-    {
-        // not as efficient, but better for LOC.
-        let records = self.describe_table(prefix, table_id, suffix)?;
-        Ok(records.iter().filter(|record| record.year == 2015).cloned().collect())
 
     }
 }
