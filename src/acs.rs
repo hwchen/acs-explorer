@@ -76,7 +76,7 @@ pub fn parse_suffix(input: &[u8]) -> IResult<&[u8], Option<String>> {
         alpha,
         |suffix| {
             str::from_utf8(suffix)
-                .map(|s| s.to_owned())
+                .map(|s| s.to_owned().to_uppercase())
         }
     ))
 }
