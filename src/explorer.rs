@@ -519,7 +519,7 @@ impl Explorer {
             }
 
             let end = time::precise_time_s();
-            println!("query time and collecting for vars: {}", end - start);
+            //println!("query time and collecting for vars: {}", end - start);
             Ok(res)
         } else {
             let start = time::precise_time_s();
@@ -555,7 +555,7 @@ impl Explorer {
                 res.push(var?);
             }
             let end = time::precise_time_s();
-            println!("query time and collecting for vars: {}", end - start);
+            //println!("query time and collecting for vars: {}", end - start);
             Ok(res)
         }
 
@@ -597,7 +597,7 @@ impl Explorer {
             }
 
             let end = time::precise_time_s();
-            println!("query time and collecting for est years: {}", end - start);
+            //println!("query time and collecting for est years: {}", end - start);
             Ok(res)
         } else {
             let mut res = HashMap::new();
@@ -613,7 +613,7 @@ impl Explorer {
             }
 
             let end = time::precise_time_s();
-            println!("query time and collecting for est years: {}", end - start);
+            //println!("query time and collecting for est years: {}", end - start);
             Ok(res)
         }
 
