@@ -48,6 +48,7 @@ use explorer::Explorer;
 use acs::{
     Estimate,
     format_table_records,
+    format_table_name,
     format_describe_table,
     format_describe_table_pretty,
     format_etl_config,
@@ -138,7 +139,9 @@ fn run() -> Result<()> {
                 &query.table_id,
                 &query.suffix
             )?;
-            println!("{:?}", table_info.get(0));
+            if let Some(table_record) = table_info.get(0) {
+                println!("{}", format_table_name(&table_record));
+            }
 
             let est_years = explorer.query_est_years(
                 query.prefix.as_ref().unwrap(),

@@ -322,18 +322,19 @@ pub fn format_table_records(records: Vec<TableRecord>) -> String {
     let mut res = "code      | label\n==========|====================\n".to_owned();
 
     for record in records {
-        let mut code = vec![
-            record.code.prefix.to_string(),
-            record.code.table_id,
-        ];
-        if let Some(suffix) = record.code.suffix {
-            code.push(suffix);
-        }
-        let code = code.concat();
-
-        res.push_str(&format!("{:10}| {}\n", code, record.label)[..]);
+        res.push_str(&format_table_name(&record));
+        res.push_str("\n");
     }
     res
+}
+
+pub fn format_table_name(record: &TableRecord) -> String {
+    let mut code = record.code.prefix.to_string();
+    code.push_str(&record.code.table_id);
+    if let Some(ref suffix) = record.code.suffix {
+        code.push_str(suffix);
+    }
+    format!("{} | {}\n", code, record.label)
 }
 
 pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
@@ -454,6 +455,7 @@ fn to_camelcase(s: &str) -> String {
         }
     }).collect()
 }
+
 
 #[cfg(test)]
 mod tests {
