@@ -270,7 +270,7 @@ impl ToString for VariableType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Estimate {
     OneYear,
     FiveYear,

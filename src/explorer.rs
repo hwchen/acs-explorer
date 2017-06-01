@@ -547,4 +547,62 @@ impl Explorer {
         }
 
     }
+
+    pub fn query_est_years(
+        &mut self,
+        prefix: &TablePrefix,
+        table_id: &str,
+        suffix: &Option<String>,
+        ) -> Result<HashMap<Estimate, Vec<u32>>>
+    {
+        let sql_str = "
+            SELECT estimate, year
+            from acs_est_years
+            where table_id = ?1 and prefix = ?2 and suffix
+        ";
+        let sql_str = if suffix.is_none() {
+            format!("{} {};", sql_str, "is null")
+        } else {
+            format!("{} {};", sql_str, "= ?3")
+        };
+
+        let mut query = self.db_client.prepare(&sql_str)?;
+
+        // duplication just to handle putting in the right number of
+        // args
+        if !suffix.is_none() {
+            let mut res = HashMap::new();
+            let start = time::precise_time_s();
+
+            let rows = query.query_map(&[&table_id, prefix, suffix], |row| {
+                (row.get(0), row.get(1))
+            })?;
+
+            for row in rows {
+                let row = row?;
+                res.entry(row.0).or_insert(Vec::new()).push(row.1);
+            }
+
+            let end = time::precise_time_s();
+            println!("query time and collecting for est years: {}", end - start);
+            Ok(res)
+        } else {
+            let mut res = HashMap::new();
+            let start = time::precise_time_s();
+
+            let rows = query.query_map(&[&table_id, prefix, suffix], |row| {
+                (row.get(0), row.get(1))
+            })?;
+
+            for row in rows {
+                let row = row?;
+                res.entry(row.0).or_insert(Vec::new()).push(row.1);
+            }
+
+            let end = time::precise_time_s();
+            println!("query time and collecting for est years: {}", end - start);
+            Ok(res)
+        }
+
+    }
 }

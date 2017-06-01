@@ -136,8 +136,16 @@ fn run() -> Result<()> {
             let table_info = explorer.query_by_table_id(
                 &query.prefix,
                 &query.table_id,
-                &query.suffix)?;
+                &query.suffix
+            )?;
             println!("{:?}", table_info.get(0));
+
+            let est_years = explorer.query_est_years(
+                query.prefix.as_ref().unwrap(),
+                &query.table_id,
+                &query.suffix
+            )?;
+            println!("{:?}", est_years);
         },
         FetchTable => println!("a variable query"),
     }
