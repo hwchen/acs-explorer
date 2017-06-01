@@ -171,7 +171,7 @@ impl Explorer {
 
             for (code, label) in vars_map.iter() {
                 let mut insert = db_tx.prepare_cached(
-                    "INSERT INTO acs_tables (
+                    "INSERT INTO acs_vars (
                         prefix,
                         table_id,
                         suffix,
@@ -181,7 +181,7 @@ impl Explorer {
                     ) VALUES (
                         ?1, ?2, ?3, ?4, ?5, ?6
                     )"
-                ).chain_err(|| "Error preparing acs_tables insert")?;
+                ).chain_err(|| "Error preparing acs_vars insert")?;
 
                 insert.execute(
                     &[
@@ -201,6 +201,7 @@ impl Explorer {
         self.db_client.execute_batch("
             CREATE INDEX acs_vars_id_idx on acs_vars (table_id, prefix, suffix);
             CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
+            CREATE INDEX acs_tables_est_years_idx on acs_est_years (table_id, prefix, suffix);
         ").chain_err(|| "Error creating indexes")?;
 
         Ok(())
@@ -292,13 +293,33 @@ impl Explorer {
                 .to_result()
                 .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
 
+            // write estimate and year here, not later
+            let mut insert = db_tx.prepare_cached(
+                "INSERT INTO acs_est_years (
+                    prefix,
+                    table_id,
+                    suffix,
+                    estimate,
+                    year
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5
+                )").chain_err(|| "Error preparing acs_est_years insert")?;
+
+            insert.execute(
+                &[
+                    &code.table_code.prefix,
+                    &code.table_code.table_id,
+                    &code.table_code.suffix,
+                    estimate,
+                    &(year as u32)
+                ]
+            ).chain_err(|| "Error executing acs_est_years insert")?;
+
+            // put code/label in map for later writing
+            // (removes duplication)
             if let None = vars_map.get(&code) {
                 vars_map.insert(code, acs_info["label"].to_string());
             };
-
-            // TODO Now deal with estimate and year
-            //estimate,
-            //&(year as u32),
 
             // Read table into table_map for later writing to db
             let table_str = acs_info["concept"].to_string();
