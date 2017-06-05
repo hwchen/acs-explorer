@@ -49,7 +49,7 @@ use acs::{
     Estimate,
     format_table_records,
     format_table_name,
-    format_describe_table,
+    format_describe_table_raw,
     format_describe_table_pretty,
     format_est_years,
     format_etl_config,
@@ -116,7 +116,7 @@ fn run() -> Result<()> {
             println!("{}", format_table_records(records));
         },
         FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable{ ref query, etl_config, pretty} => {
+        DescribeTable{ ref query, etl_config, raw} => {
 
             // prefix checked to be Some already, so can unwrap
             let records = explorer.describe_table(
@@ -125,31 +125,34 @@ fn run() -> Result<()> {
                 &query.suffix,
             )?;
 
-            // from cli, etl_config and pretty are guaranteed to not both be true at same time.
+            // from cli, etl_config and raw are guaranteed to not both be true at same time.
             let out = if etl_config {
                 format_etl_config(records)
-            } else if pretty {
-                format_describe_table_pretty(records)
+            } else if raw {
+                format_describe_table_raw(records)
             } else {
-                format_describe_table(records)
+                format_describe_table_pretty(records)
             };
             println!("{}", out);
 
-            let table_info = explorer.query_by_table_id(
-                &query.prefix,
-                &query.table_id,
-                &query.suffix
-            )?;
-            if let Some(table_record) = table_info.get(0) {
-                println!("{}", format_table_name(&table_record));
-            }
+            if !(raw || etl_config) {
+                println!("Table Information:\n============================================\n");
+                let table_info = explorer.query_by_table_id(
+                    &query.prefix,
+                    &query.table_id,
+                    &query.suffix
+                )?;
+                if let Some(table_record) = table_info.get(0) {
+                    println!("{}", format_table_name(&table_record));
+                }
 
-            let est_years = explorer.query_est_years(
-                query.prefix.as_ref().unwrap(),
-                &query.table_id,
-                &query.suffix
-            )?;
-            println!("{}", format_est_years(&est_years));
+                let est_years = explorer.query_est_years(
+                    query.prefix.as_ref().unwrap(),
+                    &query.table_id,
+                    &query.suffix
+                )?;
+                println!("{}", format_est_years(&est_years));
+            }
         },
         FetchTable => println!("a variable query"),
     }

@@ -338,7 +338,7 @@ pub fn format_table_name(record: &TableRecord) -> String {
     format!("{} | {}\n", code, record.label)
 }
 
-pub fn format_describe_table(records: Vec<VariableRecord>) -> String {
+pub fn format_describe_table_raw(records: Vec<VariableRecord>) -> String {
     let mut records = records;
 
     records.sort();

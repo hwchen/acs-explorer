@@ -37,12 +37,12 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             .arg(Arg::with_name("etl_config")
                 .short("e")
                 .long("etl")
-                .conflicts_with("pretty")
+                .conflicts_with("raw")
                 .help("format results to etl config"))
-            .arg(Arg::with_name("pretty")
-                .short("p")
-                .long("pretty")
-                .help("format results pretty")))
+            .arg(Arg::with_name("raw")
+                .short("r")
+                .long("raw")
+                .help("format results as raw data from api")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
         .after_help("Table ID search (find table subcommand):\n\
@@ -101,7 +101,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             if sub_m.is_present("verbose") { verbose = true; }
 
             let etl_config = sub_m.is_present("etl_config");
-            let pretty = sub_m.is_present("pretty");
+            let raw = sub_m.is_present("raw");
 
             let query = sub_m
                 .value_of("describe_table")
@@ -122,7 +122,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 command: Command::DescribeTable{
                     query: query,
                     etl_config: etl_config,
-                    pretty: pretty,
+                    raw: raw,
                 },
                 verbose: verbose,
             })
@@ -152,7 +152,7 @@ pub enum Command {
     DescribeTable {
         query: TableIdQuery,
         etl_config: bool,
-        pretty: bool,
+        raw: bool,
     },
     FetchTable, // all, by year, acs estimate
 }
