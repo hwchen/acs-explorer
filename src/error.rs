@@ -1,3 +1,4 @@
+use fst;
 use reqwest;
 use rusqlite;
 
@@ -7,5 +8,6 @@ error_chain! {
         Reqwest(reqwest::Error);
         ReqwestUrl(reqwest::UrlError);
         Rusqlite(rusqlite::Error);
+        Fst(fst::Error);
     }
 }

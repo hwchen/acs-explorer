@@ -1,11 +1,13 @@
 use acs::*;
 use error::*;
+use fulltext::*;
 
 use json;
 use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -62,6 +64,7 @@ const VARS_URL: &str = "variables.json";
 pub struct Explorer {
     http_client: reqwest::Client,
     db_client: rusqlite::Connection,
+    search_index_path: PathBuf,
     acs_key: String,
 }
 
@@ -69,11 +72,13 @@ impl Explorer {
     pub fn new(
         acs_key: String,
         db_path: PathBuf,
+        search_index_path: PathBuf,
         ) -> Result<Self>
     {
         Ok(Explorer {
             http_client: reqwest::Client::new()?,
             db_client: rusqlite::Connection::open(db_path)?,
+            search_index_path: search_index_path,
             acs_key: acs_key,
         })
     }
@@ -84,6 +89,11 @@ impl Explorer {
         acs_estimates: &[Estimate],
         ) -> Result<()>
     {
+        // Prep search index builder
+        let mut search_builder = SearchBuilder::new(
+            File::create(&self.search_index_path)?
+        )?;
+
         // Prep db
         self.db_client.execute_batch(
             "
@@ -163,6 +173,13 @@ impl Explorer {
                         label,
                     ]
                 ).chain_err(|| "Error executing acs_tables insert")?;
+
+                // BUILD SEARCH INDEX
+                // in this small subsection
+                // first break label into words
+                // then insert each one as a key with the table
+                // primary key as the value.
+                //for word 
             }
 
             for (code, label) in vars_map.iter() {
@@ -199,6 +216,8 @@ impl Explorer {
             CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
             CREATE INDEX acs_tables_est_years_idx on acs_est_years (table_id, prefix, suffix);
         ").chain_err(|| "Error creating indexes")?;
+
+        search_builder.finish()?;
 
         Ok(())
     }
@@ -321,6 +340,9 @@ impl Explorer {
 
             count += 1;
         }
+
+        // now that all codes are found for this year/est combo,
+        // write before moving onto next combo.
         for code in est_years_set {
             // write years and est per table
             let mut insert = db_tx.prepare_cached(

@@ -28,6 +28,7 @@
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
+extern crate fst;
 extern crate json;
 #[macro_use]
 extern crate nom;
@@ -40,6 +41,7 @@ mod cli;
 mod census;
 mod error;
 mod explorer;
+mod fulltext;
 
 use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
 use error::*;
@@ -61,6 +63,7 @@ use std::path::{PathBuf};
 
 // file name for sqlite db acs vars store
 const DB_FILE: &str = "vars.db";
+const SEARCH_INDEX: &str = "index.fst";
 const ACS_DIR: &str = ".acs-explorer";
 
 fn main() {
@@ -89,6 +92,10 @@ fn run() -> Result<()> {
     let mut db_path = PathBuf::from(ACS_DIR);
     db_path.push(DB_FILE);
 
+    // Setup for search index
+    let mut search_path = PathBuf::from(ACS_DIR);
+    search_path.push(SEARCH_INDEX);
+
     env::set_current_dir(env::home_dir().ok_or("No home dir found!")?)?;
 
     fs::create_dir_all(ACS_DIR)?;
@@ -96,7 +103,8 @@ fn run() -> Result<()> {
     // Instantiate Explorer and go!
     let mut explorer = Explorer::new(
         "acs_key".to_owned(),
-        PathBuf::from(&db_path),
+        db_path,
+        search_path,
     ).unwrap();
 
     use Command::*;

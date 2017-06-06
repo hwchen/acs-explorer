@@ -425,7 +425,8 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
     let records = records.into_iter().filter(|record| {
         let last = record.label.len();
 
-        &record.label.as_bytes()[last-1..] != &b":"[..]
+        &record.label.as_bytes()[last-1..] != &b":"[..] &&
+        record.code.var_type == VariableType::Value
     });
     let mut res = String::new();
 
