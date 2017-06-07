@@ -112,6 +112,8 @@ fn match_var_type(input: &[u8]) -> Result<VariableType> {
 pub struct VariableRecord {
     pub label: String, // Encodes Hierarchy
     pub code: VariableCode,
+    pub year: u32,
+    pub estimate: Estimate,
 }
 
 impl Ord for VariableRecord {

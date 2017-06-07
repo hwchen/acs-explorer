@@ -113,6 +113,8 @@ impl Explorer {
                 suffix TEXT,
                 column_id TEXT NOT NULL,
                 var_type TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                estimate TEXT NOT NULL,
                 label TEXT NOT NULL
             );
             DROP TABLE IF EXISTS acs_est_years;
@@ -134,7 +136,6 @@ impl Explorer {
             .chain_err(|| "Error switching journal mode to Memory")?;
 
         let mut table_map = HashMap::new();
-        let mut vars_map = HashMap::new();
 
         for year in years {
             for acs_est in acs_estimates {
@@ -142,7 +143,6 @@ impl Explorer {
                     year,
                     &acs_est,
                     &mut table_map,
-                    &mut vars_map,
                 ) {
                     Ok(_) => println!("completed refresh {}-{}", year, acs_est),
                     Err(err) => println!("no refresh {}-{}: {}", year, acs_est, err),
@@ -182,37 +182,11 @@ impl Explorer {
                 //for word 
             }
 
-            for (code, label) in vars_map.iter() {
-                let mut insert = db_tx.prepare_cached(
-                    "INSERT INTO acs_vars (
-                        prefix,
-                        table_id,
-                        suffix,
-                        column_id,
-                        var_type,
-                        label
-                    ) VALUES (
-                        ?1, ?2, ?3, ?4, ?5, ?6
-                    )"
-                ).chain_err(|| "Error preparing acs_vars insert")?;
-
-                insert.execute(
-                    &[
-                        &code.table_code.prefix,
-                        &code.table_code.table_id,
-                        &code.table_code.suffix,
-                        &code.column_id,
-                        &code.var_type,
-                        label,
-                    ]
-                ).chain_err(|| "Error executing acs_tables insert")?;
-            }
-
             db_tx.commit()?;
         }
 
         self.db_client.execute_batch("
-            CREATE INDEX acs_vars_id_idx on acs_vars (table_id, prefix, suffix);
+            CREATE INDEX acs_vars_id_idx on acs_vars (table_id, prefix, suffix, year, estimate);
             CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
             CREATE INDEX acs_tables_est_years_idx on acs_est_years (table_id, prefix, suffix);
         ").chain_err(|| "Error creating indexes")?;
@@ -227,7 +201,6 @@ impl Explorer {
         year: usize,
         acs_est: &Estimate,
         table_map: &mut HashMap<TableCode, String>,
-        vars_map: &mut HashMap<VariableCode, String>,
         ) -> Result<()>
     {
         // TODO check year
@@ -241,7 +214,6 @@ impl Explorer {
             acs_est,
             &acs_vars_data,
             table_map,
-            vars_map,
         );
         let end = time::precise_time_s();
         println!("Process time for {}-{}: {}", year, acs_est, end - start);
@@ -281,7 +253,6 @@ impl Explorer {
         estimate: &Estimate,
         vars_data: &str,
         table_map: &mut HashMap<TableCode, String>,
-        vars_map: &mut HashMap<VariableCode, String>,
         ) -> Result<()>
     {
         let data = json::parse(&vars_data)
@@ -312,9 +283,33 @@ impl Explorer {
 
             // put code/label in map for later writing
             // (removes duplication)
-            if let None = vars_map.get(&code) {
-                vars_map.insert(code, acs_info["label"].to_string());
-            };
+            let mut insert = db_tx.prepare_cached(
+                "INSERT INTO acs_vars (
+                    prefix,
+                    table_id,
+                    suffix,
+                    column_id,
+                    var_type,
+                    year,
+                    estimate,
+                    label
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
+                )"
+            ).chain_err(|| "Error preparing acs_vars insert")?;
+
+            insert.execute(
+                &[
+                    &code.table_code.prefix,
+                    &code.table_code.table_id,
+                    &code.table_code.suffix,
+                    &code.column_id,
+                    &code.var_type,
+                    &(year as u32),
+                    estimate,
+                    &acs_info["label"].to_string(),
+                ]
+            ).chain_err(|| "Error executing acs_tables insert")?;
 
             // parse table code
             // Read table into table_map for later writing to db
@@ -495,7 +490,7 @@ impl Explorer {
     {
         let sql_str = "
             SELECT prefix, table_id, suffix,
-                column_id, var_type, label
+                column_id, var_type, label, year, estimate
             from acs_vars
             where table_id = ?1 and prefix = ?2 and suffix
         ";
@@ -522,7 +517,9 @@ impl Explorer {
                         },
                         column_id: row.get(3),
                         var_type: row.get(4),
-                    }
+                    },
+                    year: row.get(6),
+                    estimate: row.get(7),
                 }
             })?;
 
@@ -559,7 +556,9 @@ impl Explorer {
                         },
                         column_id: row.get(3),
                         var_type: row.get(4),
-                    }
+                    },
+                    year: row.get(6),
+                    estimate: row.get(7),
                 }
             })?;
 
