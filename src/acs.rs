@@ -422,12 +422,20 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
 
     records.sort();
 
+
+    // Figure out better way to trim?
+    if records.len() == 2 {
+        records[1].label = records[1].label.trim_right_matches(":").to_owned();
+    }
+    println!("{:?}", records);
+
     let records = records.into_iter().filter(|record| {
         let last = record.label.len();
 
         &record.label.as_bytes()[last-1..] != &b":"[..] &&
         record.code.var_type == VariableType::Value
     });
+
     let mut res = String::new();
 
     for record in records {

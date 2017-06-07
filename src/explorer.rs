@@ -628,7 +628,7 @@ impl Explorer {
             let mut res = HashMap::new();
             let start = time::precise_time_s();
 
-            let rows = query.query_map(&[&table_id, prefix, suffix], |row| {
+            let rows = query.query_map(&[&table_id, prefix], |row| {
                 (row.get(0), row.get(1))
             })?;
 
