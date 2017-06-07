@@ -353,12 +353,12 @@ pub fn format_describe_table_raw(records: Vec<VariableRecord>) -> String {
         if let Some(suffix) = record.code.table_code.suffix {
             code.push(suffix);
         }
-        code.push(", ".to_owned());
+        code.push("_".to_owned());
         code.push(record.code.column_id);
         code.push(record.code.var_type.to_string());
         let code = code.concat();
 
-        res.push_str(&format!("{}| {}\n",
+        res.push_str(&format!("{} {}\n",
             code,
             record.label,
         )[..]);
@@ -418,6 +418,8 @@ pub fn format_describe_table_pretty(records: Vec<VariableRecord>) -> String {
 // TODO move all this processing into sql query
 // or at least refactor with format_describe
 pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
+    let indents = "    ";
+
     let mut records = records;
 
     records.sort();
@@ -427,7 +429,9 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
     if records.len() == 2 {
         records[1].label = records[1].label.trim_right_matches(":").to_owned();
     }
-    println!("{:?}", records);
+
+    let table_code = records[0].code.table_code.prefix.to_string() +
+        &records[0].code.table_code.table_id;
 
     let records = records.into_iter().filter(|record| {
         let last = record.label.len();
@@ -436,7 +440,27 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
         record.code.var_type == VariableType::Value
     });
 
+
     let mut res = String::new();
+    res.push_str(&format!("\
+        name: {:?}\n\
+        tag: \"acs\"\n\
+        acs_table:\n\
+            {}id: {:?}\n\
+            {}value_label: {:?}\n\
+            {}dimension_labels: [\n\
+            {}{:?},\n\
+            {}]\n\
+            {}columns:\n\
+    ",
+        "TABLENAME",
+        indents, table_code,
+        indents, "population", // logic to make this dynamic
+        indents,
+        indents.repeat(2), "DIMENSION",
+        indents,
+        indents,
+    ));
 
     for record in records {
         let mut code = Vec::new();
@@ -447,7 +471,9 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
         let label = record.label.replace(":!!", "_").replace("'", "");
         let label = to_camelcase(&label);
 
-        res.push_str(&format!("{}: {:?}\n",
+        let indents = indents.repeat(2);
+        res.push_str(&format!("{}{}: {:?}\n",
+            indents,
             code,
             label,
         )[..]);
