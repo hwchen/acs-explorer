@@ -107,15 +107,16 @@ fn run() -> Result<()> {
         search_path,
     ).unwrap();
 
+    let current_year = time::now().tm_year + 1900;
+
     use Command::*;
     use FindTableQuery::*;
     match command.command {
         Refresh => {
             println!("Refreshing...");
-            let current_year = time::now().tm_year as usize + 1900;
 
             let start = time::precise_time_s();
-            explorer.refresh(2009..current_year, &[Estimate::FiveYear, Estimate::OneYear])?;
+            explorer.refresh(2009..current_year as usize, &[Estimate::FiveYear, Estimate::OneYear])?;
             let end = time::precise_time_s();
             println!("Overall refresh time: {}", end - start);
         },
@@ -135,11 +136,11 @@ fn run() -> Result<()> {
 
             // from cli, etl_config and raw are guaranteed to not both be true at same time.
             let out = if etl_config {
-                format_etl_config(records)
+                format_etl_config((current_year - 2) as u32, records)
             } else if raw {
-                format_describe_table_raw(records)
+                format_describe_table_raw((current_year - 2) as u32, records)
             } else {
-                format_describe_table_pretty(records)
+                format_describe_table_pretty((current_year - 2) as u32, records)
             };
             println!("{}", out);
 

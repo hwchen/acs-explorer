@@ -302,7 +302,10 @@ impl fmt::Display for Estimate {
 
 impl ToSql for Estimate {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
-        Ok(ToSqlOutput::from(self.to_string()))
+        match *self {
+            Estimate::OneYear => Ok(ToSqlOutput::from("1yr")),
+            Estimate::FiveYear => Ok(ToSqlOutput::from("5yr")),
+        }
     }
 }
 
@@ -310,8 +313,8 @@ impl FromSql for Estimate {
     fn column_result(value: ValueRef) -> FromSqlResult<Estimate> {
         value.as_str().and_then(|val| {
             match val {
-                "ACS 1-year estimate" => Ok(Estimate::OneYear),
-                "ACS 5-year estimate" => Ok(Estimate::FiveYear),
+                "1yr" => Ok(Estimate::OneYear),
+                "5yr" => Ok(Estimate::FiveYear),
                 _ => Err(FromSqlError::InvalidType),
             }
         })
@@ -340,10 +343,15 @@ pub fn format_table_name(record: &TableRecord) -> String {
     format!("{} | {}\n", code, record.label)
 }
 
-pub fn format_describe_table_raw(records: Vec<VariableRecord>) -> String {
+pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> String {
     let mut records = records;
 
     records.sort();
+
+    let records = records.into_iter().filter(|ref record| {
+        record.year == year &&
+        record.estimate == Estimate::FiveYear
+    });
 
     let mut res = String::new();
 
@@ -368,7 +376,7 @@ pub fn format_describe_table_raw(records: Vec<VariableRecord>) -> String {
     res
 }
 
-pub fn format_describe_table_pretty(records: Vec<VariableRecord>) -> String {
+pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> String {
     let mut records = records;
 
     records.sort();
@@ -382,8 +390,11 @@ pub fn format_describe_table_pretty(records: Vec<VariableRecord>) -> String {
     ".to_owned();
 
     let records = records.into_iter().filter(|ref record| {
+        record.year == year &&
+        record.estimate == Estimate::FiveYear &&
         record.code.var_type == VariableType::Value
     });
+
     for record in records {
         let col_id = record.code.column_id;
 
@@ -419,7 +430,7 @@ pub fn format_describe_table_pretty(records: Vec<VariableRecord>) -> String {
 
 // TODO move all this processing into sql query
 // or at least refactor with format_describe
-pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
+pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
     let indents = "    ";
 
     let mut records = records;
@@ -438,6 +449,8 @@ pub fn format_etl_config(records: Vec<VariableRecord>) -> String {
     let records = records.into_iter().filter(|record| {
         let last = record.label.len();
 
+        record.year == year &&
+        record.estimate == Estimate::FiveYear &&
         &record.label.as_bytes()[last-1..] != &b":"[..] &&
         record.code.var_type == VariableType::Value
     });
