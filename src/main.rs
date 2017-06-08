@@ -140,7 +140,15 @@ fn run() -> Result<()> {
             } else if raw {
                 format_describe_table_raw((current_year - 2) as u32, records)
             } else {
-                format_describe_table_pretty((current_year - 2) as u32, records)
+                let mut s = String::new();
+                for year in 2009..2016 {
+                    let records = records.clone();
+                    s.push_str(&format!("\n{}\n{}",
+                        year,
+                        format_describe_table_pretty((year as u32), records)
+                    ));
+                }
+                s
             };
             println!("{}", out);
 

@@ -492,7 +492,7 @@ impl Explorer {
             SELECT prefix, table_id, suffix,
                 column_id, var_type, label, year, estimate
             from acs_vars
-            where table_id = ?1 and prefix = ?2 and estimate = '5yr' and suffix
+            where table_id = ?1 and prefix = ?2 and estimate = '1yr' and suffix
         ";
         let sql_str = if suffix.is_none() {
             format!("{} {};", sql_str, "is null")
@@ -526,7 +526,7 @@ impl Explorer {
             let mut query = self.db_client.prepare("
                 select count(*)
                 from acs_vars
-                where table_id = ?1 and prefix = ?2 and estimate = '5yr' and suffix is null
+                where table_id = ?1 and prefix = ?2 and estimate = '1yr' and suffix is null
             ")?;
 
             let count: u32 = query.query_row(&[&table_id, prefix], |row| {

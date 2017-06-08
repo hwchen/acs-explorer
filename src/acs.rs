@@ -349,8 +349,7 @@ pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> Str
     records.sort();
 
     let records = records.into_iter().filter(|ref record| {
-        record.year == year &&
-        record.estimate == Estimate::FiveYear
+        record.year == year
     });
 
     let mut res = String::new();
@@ -391,7 +390,6 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
 
     let records = records.into_iter().filter(|ref record| {
         record.year == year &&
-        record.estimate == Estimate::FiveYear &&
         record.code.var_type == VariableType::Value
     });
 
@@ -450,7 +448,6 @@ pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
         let last = record.label.len();
 
         record.year == year &&
-        record.estimate == Estimate::FiveYear &&
         &record.label.as_bytes()[last-1..] != &b":"[..] &&
         record.code.var_type == VariableType::Value
     });
