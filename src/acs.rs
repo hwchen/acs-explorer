@@ -343,42 +343,93 @@ pub fn format_table_name(record: &TableRecord) -> String {
     format!("{} | {}\n", code, record.label)
 }
 
+// TODO
+// This is a quick runtime hack to check for records.
+// I should go back and fix the table structure so that
+// calculation is done at refresh and runtime is faster
+fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<Vec<VariableRecord>> {
+    let mut all_versions = all_versions;
+    all_versions.sort();
+
+    let mut versions: Vec<Vec<VariableRecord>> = Vec::new();
+
+    // check a year, and est combo
+    for year in 2009..2016 {
+        for estimate in &[Estimate::FiveYear, Estimate::OneYear] {
+            let current_version: Vec<_> = all_versions.iter().filter(|record| {
+                record.year == year &&
+                record.estimate == *estimate
+            })
+            .cloned()
+            .collect();
+
+            let mut is_new_version = false;
+
+            if let Some(last_version) = versions.last() {
+                // First check if tables are different length (with current being
+                // non-empty, so that it's useful to check)
+                // then must be different versions without checking further
+                if current_version.len() != 0 && current_version.len() != last_version.len() {
+                    is_new_version = true;
+                } else if current_version.len() != 0 {
+                    // if table lengths are same, then check further, if any labels
+                    // different, if current version is not empty vec
+                    let are_different_versions = last_version.iter()
+                        .zip(current_version.iter())
+                        .any(|(last, current)| {
+                            last.label.to_lowercase() != current.label.to_lowercase()
+                        });
+
+                    if are_different_versions {
+                        is_new_version = true;
+                    }
+                }
+            } else {
+                // If there is no last_version, it means versions
+                // is empty, so fill with the current one.
+                is_new_version = true;
+            }
+
+            if is_new_version {
+                versions.push(current_version);
+            }
+        }
+    }
+    versions
+}
+
 pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> String {
-    let mut records = records;
-
-    records.sort();
-
-    let records = records.into_iter().filter(|ref record| {
-        record.year == year
-    });
+    let versions = get_table_versions(records);
 
     let mut res = String::new();
 
-    for record in records {
-        let mut code = vec![
-            record.code.table_code.prefix.to_string(),
-            record.code.table_code.table_id,
-        ];
-        if let Some(suffix) = record.code.table_code.suffix {
-            code.push(suffix);
-        }
-        code.push("_".to_owned());
-        code.push(record.code.column_id);
-        code.push(record.code.var_type.to_string());
-        let code = code.concat();
+    for table_version in versions {
+        //res.push_str(&format!("First year used: {}\n", table_version[0].year));
+        for record in table_version {
+            let mut code = vec![
+                record.code.table_code.prefix.to_string(),
+                record.code.table_code.table_id,
+            ];
+            if let Some(suffix) = record.code.table_code.suffix {
+                code.push(suffix);
+            }
+            code.push("_".to_owned());
+            code.push(record.code.column_id);
+            code.push(record.code.var_type.to_string());
+            let code = code.concat();
 
-        res.push_str(&format!("{} {}\n",
-            code,
-            record.label,
-        )[..]);
+            res.push_str(&format!("{} {}\n",
+                code,
+                record.label,
+            )[..]);
+        }
+        res.push_str("\n");
     }
     res
 }
 
 pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> String {
-    let mut records = records;
-
-    records.sort();
+    let versions = get_table_versions(records);
 
     let indent = "    ";
 
@@ -388,39 +439,43 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
 
     ".to_owned();
 
-    let records = records.into_iter().filter(|ref record| {
-        record.year == year &&
-        record.code.var_type == VariableType::Value
-    });
+    for table_version in versions {
+        res.push_str(&format!("First year used: {}\n", table_version[0].year));
 
-    for record in records {
-        let col_id = record.code.column_id;
-
-        // format label by only showing the last part of label,
-        // with appropriate indentation
-
-        // find index to slice at
-        let split_index = match record.label.rfind(":!!") {
-            Some(i) => i + 3,
-            None => 0,
-        };
-
-        let (indents, label) = record.label.split_at(split_index);
-
-        // There's an extra :!! at the end of indents. So
-        // skip1
-        let indents: String = indents.split(":!!").skip(1)
-            .map(|_| indent)
-            .collect();
-
-        let label = label.trim_right_matches(":");
+        let table_version = table_version.into_iter().filter(|ref record| {
+            record.code.var_type == VariableType::Value
+        });
 
 
-        res.push_str(&format!("{:5}| {}{}\n",
-            col_id,
-            indents,
-            label,
-        )[..]);
+        for record in table_version {
+            let col_id = record.code.column_id;
+
+            // format label by only showing the last part of label,
+            // with appropriate indentation
+
+            // find index to slice at
+            let split_index = match record.label.rfind(":!!") {
+                Some(i) => i + 3,
+                None => 0,
+            };
+
+            let (indents, label) = record.label.split_at(split_index);
+
+            // There's an extra :!! at the end of indents. So
+            // skip1
+            let indents: String = indents.split(":!!").skip(1)
+                .map(|_| indent)
+                .collect();
+
+            let label = label.trim_right_matches(":");
+
+
+            res.push_str(&format!("{:5}| {}{}\n",
+                col_id,
+                indents,
+                label,
+            )[..]);
+        }
     }
     res
 
@@ -429,66 +484,73 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
 // TODO move all this processing into sql query
 // or at least refactor with format_describe
 pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
+    let versions = get_table_versions(records);
+
     let indents = "    ";
 
-    let mut records = records;
-
-    records.sort();
-
-
-    // Figure out better way to trim?
-    if records.len() == 2 {
-        records[1].label = records[1].label.trim_right_matches(":").to_owned();
-    }
-
-    let table_code = records[0].code.table_code.prefix.to_string() +
-        &records[0].code.table_code.table_id;
-
-    let records = records.into_iter().filter(|record| {
-        let last = record.label.len();
-
-        record.year == year &&
-        &record.label.as_bytes()[last-1..] != &b":"[..] &&
-        record.code.var_type == VariableType::Value
-    });
-
+    let mut min_year = 0;
+    let mut max_year = 2016;
 
     let mut res = String::new();
-    res.push_str(&format!("\
-        name: {:?}\n\
-        tag: \"acs\"\n\
-        acs_table:\n\
-            {}id: {:?}\n\
-            {}value_label: {:?}\n\
-            {}dimension_labels: [\n\
-            {}{:?},\n\
-            {}]\n\
-            {}columns:\n\
-    ",
-        "TABLENAME",
-        indents, table_code,
-        indents, "population", // logic to make this dynamic
-        indents,
-        indents.repeat(2), "DIMENSION",
-        indents,
-        indents,
-    ));
 
-    for record in records {
-        let mut code = Vec::new();
-        code.push(record.code.column_id);
-        code.push(record.code.var_type.to_string());
-        let code = code.concat();
+    for mut table_version in versions {
+        // Figure out better way to trim?
+        if table_version.len() == 2 {
+            table_version[1].label = table_version[1].label.trim_right_matches(":").to_owned();
+        }
 
-        let label = record.label.replace(":!!", "_").replace("'", "");
-        let label = to_camelcase(&label);
+        let table_code = table_version[0].code.table_code.prefix.to_string() +
+            &table_version[0].code.table_code.table_id;
 
-        let indents = indents.repeat(2);
-        res.push_str(&format!("{}{}: {:?}\n",
+        min_year = table_version[0].year;
+
+        let records = table_version.into_iter().filter(|record| {
+            let last = record.label.len();
+
+            &record.label.as_bytes()[last-1..] != &b":"[..] &&
+            record.code.var_type == VariableType::Value
+        });
+
+
+        res.push_str(&format!("\
+            name: {:?}\n\
+            tag: \"acs\"\n\
+            min_year: {}\n\
+            acs_table:\n\
+                {}id: {:?}\n\
+                {}value_label: {:?}\n\
+                {}dimension_labels: [\n\
+                {}{:?},\n\
+                {}]\n\
+                {}columns:\n\
+        ",
+            "TABLENAME",
+            min_year,
+            indents, table_code,
+            indents, "population", // logic to make this dynamic
             indents,
-            code,
-            label,
-        )[..]);
+            indents.repeat(2), "DIMENSION",
+            indents,
+            indents,
+        ));
+
+        for record in records {
+            let mut code = Vec::new();
+            code.push(record.code.column_id);
+            code.push(record.code.var_type.to_string());
+            let code = code.concat();
+
+            let label = record.label.replace(":!!", "_").replace("'", "");
+            let label = to_camelcase(&label);
+
+            let indents = indents.repeat(2);
+            res.push_str(&format!("{}{}: {:?}\n",
+                indents,
+                code,
+                label,
+            )[..]);
+        }
+        res.push_str("\n");
     }
     res
 }
