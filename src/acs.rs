@@ -353,14 +353,14 @@ struct TableVersion {
 // This is a quick runtime hack to check for records.
 // I should go back and fix the table structure so that
 // calculation is done at refresh and runtime is faster
-fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<TableVersion> {
+fn get_table_versions(current_year: u32, all_versions: Vec<VariableRecord>) -> Vec<TableVersion> {
     let mut all_versions = all_versions;
     all_versions.sort();
 
     let mut versions: Vec<TableVersion> = Vec::new();
 
     // check a year, and est combo
-    for year in 2009..2016 {
+    for year in 2009..current_year {
         for estimate in &[Estimate::FiveYear, Estimate::OneYear] {
             let current_records: Vec<_> = all_versions.iter().filter(|record| {
                 record.year == year &&
@@ -405,7 +405,7 @@ fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<TableVersion> {
                 versions.push(TableVersion {
                     records: current_records,
                     min_year: min_year,
-                    max_year: 2016,
+                    max_year: current_year - 1,
                 });
             }
         }
@@ -413,13 +413,13 @@ fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<TableVersion> {
     versions
 }
 
-pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> String {
-    let versions = get_table_versions(records);
+pub fn format_describe_table_raw(current_year: u32, records: Vec<VariableRecord>) -> String {
+    let versions = get_table_versions(current_year, records);
 
     let mut res = String::new();
 
     for table_version in versions {
-        //res.push_str(&format!("First year used: {}\n", table_version[0].year));
+        res.push_str(&format!("::Years: {}-{}\n", table_version.min_year, table_version.max_year));
         for record in table_version.records {
             let mut code = vec![
                 record.code.table_code.prefix.to_string(),
@@ -443,19 +443,28 @@ pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> Str
     res
 }
 
-pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> String {
-    let versions = get_table_versions(records);
+pub fn format_describe_table_pretty(current_year: u32, records: Vec<VariableRecord>) -> String {
+    let versions = get_table_versions(current_year, records);
 
     let indent = "    ";
 
-    let mut res = "\n\
-        code | label\n\
-        =====|====================================\n\
-
-    ".to_owned();
+    let mut res = "\nTable Columns:\n============================================\n\n".to_owned();
 
     for table_version in versions {
-        res.push_str(&format!("Years: {}-{}\n", table_version.min_year, table_version.max_year));
+        let min_year = table_version.min_year;
+        let max_year = table_version.max_year;
+
+        if min_year == max_year {
+            res.push_str(&format!("\
+                code | label      (Year: {})\n\
+                -----+------------------------------------\n\
+            ", min_year)).to_owned();
+        } else {
+            res.push_str(&format!("\
+                code | label      (Years: {}-{})\n\
+                -----+------------------------------------\n\
+            ", min_year, max_year)).to_owned();
+        }
 
         let table_records = table_version.records.into_iter().filter(|ref record| {
             record.code.var_type == VariableType::Value
@@ -491,6 +500,7 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
                 label,
             )[..]);
         }
+        res.push_str("------------------------------------------\n\n")
     }
     res
 
@@ -498,8 +508,8 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
 
 // TODO move all this processing into sql query
 // or at least refactor with format_describe
-pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
-    let versions = get_table_versions(records);
+pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>) -> String {
+    let versions = get_table_versions(current_year, records);
 
     let indents = "    ";
 
