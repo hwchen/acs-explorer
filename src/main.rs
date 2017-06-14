@@ -135,24 +135,23 @@ fn run() -> Result<()> {
             )?;
 
             // from cli, etl_config and raw are guaranteed to not both be true at same time.
-            let out = if etl_config {
+            let mut out = if etl_config {
                 format_etl_config((current_year - 2) as u32, records)
             } else if raw {
                 format_describe_table_raw((current_year - 2) as u32, records)
             } else {
                 format_describe_table_pretty((current_year as u32), records)
             };
-            println!("{}", out);
 
             if !(raw || etl_config) {
-                println!("Table Information:\n============================================\n");
+                out.push_str("Table Information:\n============================================\n");
                 let table_info = explorer.query_by_table_id(
                     &query.prefix,
                     &query.table_id,
                     &query.suffix
                 )?;
                 if let Some(table_record) = table_info.get(0) {
-                    println!("{}", format_table_name(&table_record));
+                    out.push_str(&format_table_name(&table_record));
                 }
 
                 let est_years = explorer.query_est_years(
@@ -160,8 +159,9 @@ fn run() -> Result<()> {
                     &query.table_id,
                     &query.suffix
                 )?;
-                println!("{}", format_est_years(&est_years));
+                out.push_str(&format_est_years(&est_years));
             }
+            println!("{}", out);
         },
         FetchTable => println!("a variable query"),
     }
