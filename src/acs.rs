@@ -343,20 +343,26 @@ pub fn format_table_name(record: &TableRecord) -> String {
     format!("{} | {}\n", code, record.label)
 }
 
+struct TableVersion {
+    records: Vec<VariableRecord>,
+    min_year: u32,
+    max_year: u32,
+}
+
 // TODO
 // This is a quick runtime hack to check for records.
 // I should go back and fix the table structure so that
 // calculation is done at refresh and runtime is faster
-fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<Vec<VariableRecord>> {
+fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<TableVersion> {
     let mut all_versions = all_versions;
     all_versions.sort();
 
-    let mut versions: Vec<Vec<VariableRecord>> = Vec::new();
+    let mut versions: Vec<TableVersion> = Vec::new();
 
     // check a year, and est combo
     for year in 2009..2016 {
         for estimate in &[Estimate::FiveYear, Estimate::OneYear] {
-            let current_version: Vec<_> = all_versions.iter().filter(|record| {
+            let current_records: Vec<_> = all_versions.iter().filter(|record| {
                 record.year == year &&
                 record.estimate == *estimate
             })
@@ -369,13 +375,13 @@ fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<Vec<VariableReco
                 // First check if tables are different length (with current being
                 // non-empty, so that it's useful to check)
                 // then must be different versions without checking further
-                if current_version.len() != 0 && current_version.len() != last_version.len() {
+                if current_records.len() != 0 && current_records.len() != last_version.records.len() {
                     is_new_version = true;
-                } else if current_version.len() != 0 {
+                } else if current_records.len() != 0 {
                     // if table lengths are same, then check further, if any labels
                     // different, if current version is not empty vec
-                    let are_different_versions = last_version.iter()
-                        .zip(current_version.iter())
+                    let are_different_versions = last_version.records.iter()
+                        .zip(current_records.iter())
                         .any(|(last, current)| {
                             last.label.to_lowercase() != current.label.to_lowercase()
                         });
@@ -391,7 +397,16 @@ fn get_table_versions(all_versions: Vec<VariableRecord>) -> Vec<Vec<VariableReco
             }
 
             if is_new_version {
-                versions.push(current_version);
+                let min_year = current_records[0].year;
+
+                if let Some(last_version) = versions.last_mut() {
+                    last_version.max_year = min_year - 1;
+                }
+                versions.push(TableVersion {
+                    records: current_records,
+                    min_year: min_year,
+                    max_year: 2016,
+                });
             }
         }
     }
@@ -405,7 +420,7 @@ pub fn format_describe_table_raw(year: u32, records: Vec<VariableRecord>) -> Str
 
     for table_version in versions {
         //res.push_str(&format!("First year used: {}\n", table_version[0].year));
-        for record in table_version {
+        for record in table_version.records {
             let mut code = vec![
                 record.code.table_code.prefix.to_string(),
                 record.code.table_code.table_id,
@@ -440,14 +455,14 @@ pub fn format_describe_table_pretty(year: u32, records: Vec<VariableRecord>) -> 
     ".to_owned();
 
     for table_version in versions {
-        res.push_str(&format!("First year used: {}\n", table_version[0].year));
+        res.push_str(&format!("Years: {}-{}\n", table_version.min_year, table_version.max_year));
 
-        let table_version = table_version.into_iter().filter(|ref record| {
+        let table_records = table_version.records.into_iter().filter(|ref record| {
             record.code.var_type == VariableType::Value
         });
 
 
-        for record in table_version {
+        for record in table_records {
             let col_id = record.code.column_id;
 
             // format label by only showing the last part of label,
@@ -488,23 +503,22 @@ pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
 
     let indents = "    ";
 
-    let mut min_year = 0;
-    let mut max_year = 2016;
-
     let mut res = String::new();
 
     for mut table_version in versions {
+        let mut records = table_version.records;
         // Figure out better way to trim?
-        if table_version.len() == 2 {
-            table_version[1].label = table_version[1].label.trim_right_matches(":").to_owned();
+        if records.len() == 2 {
+            records[1].label = records[1].label.trim_right_matches(":").to_owned();
         }
 
-        let table_code = table_version[0].code.table_code.prefix.to_string() +
-            &table_version[0].code.table_code.table_id;
+        let table_code = records[0].code.table_code.prefix.to_string() +
+            &records[0].code.table_code.table_id;
 
-        min_year = table_version[0].year;
+        let min_year = table_version.min_year;
+        let max_year = table_version.max_year;
 
-        let records = table_version.into_iter().filter(|record| {
+        let records = records.into_iter().filter(|record| {
             let last = record.label.len();
 
             &record.label.as_bytes()[last-1..] != &b":"[..] &&
@@ -516,6 +530,7 @@ pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
             name: {:?}\n\
             tag: \"acs\"\n\
             min_year: {}\n\
+            max_year: {}\n\
             acs_table:\n\
                 {}id: {:?}\n\
                 {}value_label: {:?}\n\
@@ -526,6 +541,7 @@ pub fn format_etl_config(year: u32, records: Vec<VariableRecord>) -> String {
         ",
             "TABLENAME",
             min_year,
+            max_year,
             indents, table_code,
             indents, "population", // logic to make this dynamic
             indents,
