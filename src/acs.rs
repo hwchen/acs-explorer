@@ -231,11 +231,11 @@ impl FromSql for TablePrefix {
     }
 }
 
-impl ToString for TablePrefix {
-    fn to_string(&self) -> String {
+impl fmt::Display for TablePrefix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TablePrefix::B => "B".to_owned(),
-            TablePrefix::C => "C".to_owned(),
+            TablePrefix::B => write!(f, "B"),
+            TablePrefix::C => write!(f, "C"),
         }
     }
 }
@@ -264,11 +264,11 @@ impl FromSql for VariableType {
     }
 }
 
-impl ToString for VariableType {
-    fn to_string(&self) -> String {
+impl fmt::Display for VariableType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            VariableType::MarginOfError => "M".to_owned(),
-            VariableType::Value => "E".to_owned(),
+            VariableType::MarginOfError => write!(f, "M"),
+            VariableType::Value => write!(f, "E"),
         }
     }
 }
@@ -396,7 +396,7 @@ fn get_table_versions(current_year: u32, all_versions: Vec<VariableRecord>) -> V
                 is_new_version = true;
             }
 
-            if is_new_version {
+            if is_new_version && !current_records.is_empty() {
                 let min_year = current_records[0].year;
 
                 if let Some(last_version) = versions.last_mut() {

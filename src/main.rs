@@ -60,6 +60,7 @@ use acs::{
 use std::env;
 use std::fs;
 use std::path::{PathBuf};
+use std::process;
 
 // file name for sqlite db acs vars store
 const DB_FILE: &str = "vars.db";
@@ -133,6 +134,20 @@ fn run() -> Result<()> {
                 &query.table_id,
                 &query.suffix,
             )?;
+
+            let suffix_display = match query.suffix {
+                Some(ref s) => s,
+                None => "",
+            };
+
+            if records.is_empty() {
+                println!("Table {}{}{} not found.",
+                    query.prefix.as_ref().unwrap(),
+                    query.table_id,
+                    suffix_display,
+                );
+                process::exit(0);
+            }
 
             // from cli, etl_config and raw are guaranteed to not both be true at same time.
             let mut out = if etl_config {
