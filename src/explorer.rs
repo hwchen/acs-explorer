@@ -1,13 +1,11 @@
 use acs::*;
 use error::*;
-use fulltext::*;
 
 use json;
 use reqwest;
 use reqwest::{StatusCode, Url};
 use rusqlite;
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
 use std::io::Read;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -66,7 +64,6 @@ const VARS_URL: &str = "variables.json";
 pub struct Explorer {
     http_client: reqwest::Client,
     db_client: rusqlite::Connection,
-    search_index_path: PathBuf,
     acs_key: String,
 }
 
@@ -74,13 +71,11 @@ impl Explorer {
     pub fn new(
         acs_key: String,
         db_path: PathBuf,
-        search_index_path: PathBuf,
         ) -> Result<Self>
     {
         Ok(Explorer {
             http_client: reqwest::Client::new()?,
             db_client: rusqlite::Connection::open(db_path)?,
-            search_index_path: search_index_path,
             acs_key: acs_key,
         })
     }
@@ -91,11 +86,6 @@ impl Explorer {
         acs_estimates: &[Estimate],
         ) -> Result<()>
     {
-        // Prep search index builder
-        let mut search_builder = SearchBuilder::new(
-            File::create(&self.search_index_path)?
-        )?;
-
         // Prep db
         self.db_client.execute_batch(
             "
@@ -193,8 +183,6 @@ impl Explorer {
             CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
             CREATE INDEX acs_tables_est_years_idx on acs_est_years (table_id, prefix, suffix);
         ").chain_err(|| "Error creating indexes")?;
-
-        search_builder.finish()?;
 
         Ok(())
     }

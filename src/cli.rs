@@ -16,18 +16,12 @@ pub fn cli_command() -> Result<ExplorerCommand> {
         .arg(Arg::with_name("verbose")
              .short("v")
              .global(true))
-        .subcommand(SubCommand::with_name("find")
-            .about("search for an acs table by id or label")
-            .subcommand(SubCommand::with_name("table")
-                .alias("t")
-                .arg(Arg::with_name("find_table")
-                    .takes_value(true)
-                    .help("enter table id to search for")))
-            .subcommand(SubCommand::with_name("label")
-                .alias("l")
-                .arg(Arg::with_name("find_label")
-                    .takes_value(true)
-                    .help("enter text to search in labels for"))))
+        .subcommand(SubCommand::with_name("search")
+            .about("fulltext search for an acs table")
+            .alias("s")
+            .arg(Arg::with_name("search_tables")
+                .takes_value(true)
+                .help("enter text to search for")))
         .subcommand(SubCommand::with_name("describe")
             .about("Get information about a specific table")
             .alias("d")
@@ -57,45 +51,17 @@ pub fn cli_command() -> Result<ExplorerCommand> {
 
     // Now section on matching subcommands and flags
     match app_m.subcommand() {
-        ("find", Some(sub_m)) => {
-            match sub_m.subcommand() {
-                ("table", Some(sub_m)) => {
-                    if sub_m.is_present("verbose") { verbose = true; }
+        ("search", Some(sub_m)) => {
+            if sub_m.is_present("verbose") { verbose = true; }
 
-                    let query = sub_m
-                        .value_of("find_table")
-                        .ok_or("Table id required for query")?;
+            let search = sub_m
+                .value_of("search_tables")
+                .ok_or("No text entered")?;
 
-                    let query = parse_table_query(query.as_bytes())
-                        .to_result()
-                        .map_err(|_| format!(
-                            "{:?} is not a valid Table ID format, see --help",
-                            query)
-                        )?;
-
-                    Ok(ExplorerCommand {
-                        command: Command::FindTable(
-                            FindTableQuery::ByTableId( query )
-                        ),
-                        verbose: verbose,
-                    })
-                },
-                ("label", Some(sub_m)) => {
-                    if sub_m.is_present("verbose") { verbose = true; }
-
-                    let query = sub_m
-                        .value_of("find_label")
-                        .ok_or("Text required to search by label")?;
-
-                    Ok(ExplorerCommand {
-                        command: Command::FindTable(
-                            FindTableQuery::ByLabel( query.to_owned() )
-                        ),
-                        verbose:verbose,
-                    })
-                },
-                _ => Err("Not a valid subcommand".into()),
-            }
+            Ok(ExplorerCommand {
+                command: Command::FulltextSearch(search.to_owned()),
+                verbose: verbose,
+            })
         },
         ("describe", Some(sub_m)) => {
             if sub_m.is_present("verbose") { verbose = true; }
@@ -119,7 +85,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             }
 
             Ok(ExplorerCommand {
-                command: Command::DescribeTable{
+                command: Command::DescribeTable {
                     query: query,
                     etl_config: etl_config,
                     raw: raw,
@@ -148,19 +114,12 @@ pub struct ExplorerCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     Refresh,
-    FindTable(FindTableQuery),
+    FulltextSearch(String),
     DescribeTable {
         query: TableIdQuery,
         etl_config: bool,
         raw: bool,
     },
-    FetchTable, // all, by year, acs estimate
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FindTableQuery {
-    ByTableId(TableIdQuery),
-    ByLabel(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]

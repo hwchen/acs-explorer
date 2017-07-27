@@ -321,19 +321,6 @@ impl FromSql for Estimate {
     }
 }
 
-pub fn format_table_records(records: Vec<TableRecord>) -> String {
-    let mut records = records;
-    records.sort();
-
-    let mut res = "code      | label\n==========|====================\n".to_owned();
-
-    for record in records {
-        res.push_str(&format_table_name(&record));
-        res.push_str("\n");
-    }
-    res
-}
-
 pub fn format_table_name(record: &TableRecord) -> String {
     let mut code = record.code.prefix.to_string();
     code.push_str(&record.code.table_id);
@@ -515,7 +502,7 @@ pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>) -> Str
 
     let mut res = String::new();
 
-    for mut table_version in versions {
+    for table_version in versions {
         let mut records = table_version.records;
         // Figure out better way to trim?
         if records.len() == 2 {

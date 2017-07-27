@@ -41,15 +41,13 @@ mod cli;
 mod census;
 mod error;
 mod explorer;
-mod fulltext;
 
-use cli::{cli_command, Command, FindTableQuery, TableIdQuery};
+use cli::{cli_command, Command};
 use error::*;
 use explorer::Explorer;
 // temp
 use acs::{
     Estimate,
-    format_table_records,
     format_table_name,
     format_describe_table_raw,
     format_describe_table_pretty,
@@ -100,13 +98,11 @@ fn run() -> Result<()> {
     let mut explorer = Explorer::new(
         "acs_key".to_owned(),
         db_path,
-        search_path,
     ).unwrap();
 
     let current_year = time::now().tm_year + 1900;
 
     use Command::*;
-    use FindTableQuery::*;
     match command.command {
         Refresh => {
             println!("Refreshing...");
@@ -117,12 +113,7 @@ fn run() -> Result<()> {
             println!("Overall refresh time: {}", end - start);
         },
 
-        FindTable(ByTableId(TableIdQuery {prefix, table_id, suffix})) => {
-            let records = explorer.query_by_table_id(&prefix, &table_id, &suffix)?;
-            println!("{}", format_table_records(records));
-        },
-
-        FindTable(ByLabel(s)) => println!("label query: {:?}", s),
+        FulltextSearch(search) => println!("fulltext search: {:?}", search),
 
         DescribeTable{ ref query, etl_config, raw} => {
             // prefix checked to be Some already, so can unwrap
@@ -176,8 +167,6 @@ fn run() -> Result<()> {
             }
             println!("{}", out);
         },
-
-        FetchTable => println!("a variable query"),
     }
 
     Ok(())
