@@ -45,7 +45,7 @@ mod explorer;
 use cli::{cli_command, Command};
 use error::*;
 use explorer::Explorer;
-// temp
+// TODO move formatting to another module.
 use acs::{
     Estimate,
     format_table_name,
@@ -53,6 +53,7 @@ use acs::{
     format_describe_table_pretty,
     format_est_years,
     format_etl_config,
+    format_fulltext_search_results,
 };
 
 use std::env;
@@ -113,7 +114,17 @@ fn run() -> Result<()> {
             println!("Overall refresh time: {}", end - start);
         },
 
-        FulltextSearch(search) => println!("fulltext search: {:?}", search),
+        FulltextSearch(search) => {
+            let records = explorer.fulltext_search(&search)?;
+
+            if records.is_empty() {
+                println!("No results for search: {:?}", search);
+                process::exit(0);
+            }
+
+            let out = format_fulltext_search_results(current_year as u32, records);
+            println!("{}", out);
+        },
 
         DescribeTable{ ref query, etl_config, raw} => {
             // prefix checked to be Some already, so can unwrap

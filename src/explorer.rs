@@ -633,4 +633,11 @@ impl Explorer {
         }
 
     }
+
+    pub fn fulltext_search(
+        &mut self,
+        search: &str,
+    ) -> Result<Vec<VariableRecord>> {
+        Ok(Vec::new())
+    }
 }

@@ -587,6 +587,12 @@ fn to_camelcase(s: &str) -> String {
     }).collect()
 }
 
+pub fn format_fulltext_search_results(current_year: u32, records: Vec<VariableRecord>) -> String {
+    let versions = get_table_versions(current_year, records);
+    "".to_owned()
+}
+
+
 
 #[cfg(test)]
 mod tests {
