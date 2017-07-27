@@ -64,7 +64,6 @@ use std::process;
 
 // file name for sqlite db acs vars store
 const DB_FILE: &str = "vars.db";
-const SEARCH_INDEX: &str = "index.fst";
 const ACS_DIR: &str = ".acs-explorer";
 
 fn main() {
@@ -93,10 +92,6 @@ fn run() -> Result<()> {
     let mut db_path = PathBuf::from(ACS_DIR);
     db_path.push(DB_FILE);
 
-    // Setup for search index
-    let mut search_path = PathBuf::from(ACS_DIR);
-    search_path.push(SEARCH_INDEX);
-
     env::set_current_dir(env::home_dir().ok_or("No home dir found!")?)?;
 
     fs::create_dir_all(ACS_DIR)?;
@@ -121,13 +116,15 @@ fn run() -> Result<()> {
             let end = time::precise_time_s();
             println!("Overall refresh time: {}", end - start);
         },
+
         FindTable(ByTableId(TableIdQuery {prefix, table_id, suffix})) => {
             let records = explorer.query_by_table_id(&prefix, &table_id, &suffix)?;
             println!("{}", format_table_records(records));
         },
-        FindTable(ByLabel(s)) => println!("label query: {:?}", s),
-        DescribeTable{ ref query, etl_config, raw} => {
 
+        FindTable(ByLabel(s)) => println!("label query: {:?}", s),
+
+        DescribeTable{ ref query, etl_config, raw} => {
             // prefix checked to be Some already, so can unwrap
             let records = explorer.describe_table(
                 query.prefix.as_ref().unwrap(),
@@ -179,6 +176,7 @@ fn run() -> Result<()> {
             }
             println!("{}", out);
         },
+
         FetchTable => println!("a variable query"),
     }
 
