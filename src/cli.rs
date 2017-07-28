@@ -39,10 +39,10 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .help("format results as raw data from api")))
         .subcommand(SubCommand::with_name("refresh")
             .about("refresh all years and estimates of acs data summaries"))
-        .after_help("Table ID search (find table subcommand):\n\
-            \t- must start with a valid prefix (or no prefix for search).\n\
-            \t- followed by required numerical table id.\n\
-            \t- with optional table suffix. ")
+        .after_help("fulltext search (`search` table subcommand):\n\
+            \t- Currently exact match.\n
+            \t- Case insensitive.\n\
+            \t- Searches table name, and table id (no prefix or suffix). ")
         .get_matches();
 
     // for global flags. Check at each level/subcommand if the flag is present,
