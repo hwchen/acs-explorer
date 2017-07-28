@@ -327,7 +327,7 @@ pub fn format_table_name(record: &TableRecord) -> String {
     if let Some(ref suffix) = record.code.suffix {
         code.push_str(suffix);
     }
-    format!("{} | {}\n", code, record.label)
+    format!("{:9} | {}\n", code, record.label)
 }
 
 struct TableVersion {
@@ -588,9 +588,12 @@ fn to_camelcase(s: &str) -> String {
 }
 
 pub fn format_fulltext_search_results(records: Vec<TableRecord>) -> String {
-    format!("{:?}", records)
+    let mut res = String::new();
+    for record in &records {
+        res.push_str(&format_table_name(record));
+    }
+    res
 }
-
 
 
 #[cfg(test)]

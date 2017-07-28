@@ -642,6 +642,7 @@ impl Explorer {
             SELECT prefix, table_id, suffix, label
                 FROM acs_fts
                 WHERE acs_fts MATCH ?1
+                ORDER BY table_id, prefix, suffix
         ";
         let mut query = self.db_client.prepare(&sql_str)?;
         let records = query.query_map(&[&search], |row| {
