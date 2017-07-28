@@ -43,20 +43,8 @@ use time;
 //
 // Timing on etl lookup is 0.15 before indexing, 0.05 after. (with stdout)) (or now 0.01?)
 //
-// TODO next I want to know the years and estimates of each table. Never search
-// by var.
-// - rename commands: describe, fetch, find, --table --label
-// - reimplement the ToSql to be a more compact format
-//
-// - improve formatting (prettier, showing levels better for describe)
-//
-// - don't change search (by table_id) right now? In the future, use a search
-//   engine to give a drop-down list of choices.
-//
-// - Figure out how to keep hashmap in order (ordermap)
-// - have switches for showing label name and est_years?
-//
-// - use insert from rusqlite for inserts?
+// TODO
+// - create acs_tables using select distinct from acs_vars, instead of using map.
 
 const CENSUS_URL_BASE: &str = "https://api.census.gov/data/";
 const VARS_URL: &str = "variables.json";
@@ -183,6 +171,17 @@ impl Explorer {
             CREATE INDEX acs_tables_id_idx on acs_tables (table_id, prefix, suffix);
             CREATE INDEX acs_tables_est_years_idx on acs_est_years (table_id, prefix, suffix);
         ").chain_err(|| "Error creating indexes")?;
+        self.db_client.execute_batch("
+            DROP TABLE IF EXISTS acs_fts;
+            CREATE VIRTUAL TABLE acs_fts USING fts5(prefix, table_id, suffix, label);
+        ")
+            .chain_err(|| "Error creating fulltext search table")?;
+        self.db_client.execute_batch("
+            INSERT INTO acs_fts (prefix, table_id, suffix, label)
+                SELECT prefix, table_id, suffix, label
+                FROM acs_tables;
+        ")
+            .chain_err(|| "Error populating fulltext search table")?;
 
         Ok(())
     }
@@ -300,7 +299,7 @@ impl Explorer {
                     estimate,
                     &acs_info["label"].to_string(),
                 ]
-            ).chain_err(|| "Error executing acs_tables insert")?;
+            ).chain_err(|| "Error executing acs_vars insert")?;
 
             // parse table code
             // Read table into table_map for later writing to db
@@ -637,7 +636,29 @@ impl Explorer {
     pub fn fulltext_search(
         &mut self,
         search: &str,
-    ) -> Result<Vec<VariableRecord>> {
-        Ok(Vec::new())
+        ) -> Result<Vec<TableRecord>>
+    {
+        let sql_str = "
+            SELECT prefix, table_id, suffix, label
+                FROM acs_fts
+                WHERE acs_fts MATCH ?1
+        ";
+        let mut query = self.db_client.prepare(&sql_str)?;
+        let records = query.query_map(&[&search], |row| {
+            TableRecord {
+                code: TableCode {
+                    prefix: row.get(0),
+                    table_id: row.get(1),
+                    suffix: row.get(2),
+                },
+                label: row.get(3),
+            }
+        })?;
+
+        let mut res = Vec::new();
+        for record in records {
+            res.push(record?);
+        }
+        Ok(res)
     }
 }

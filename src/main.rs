@@ -122,7 +122,7 @@ fn run() -> Result<()> {
                 process::exit(0);
             }
 
-            let out = format_fulltext_search_results(current_year as u32, records);
+            let out = format_fulltext_search_results(records);
             println!("{}", out);
         },
 
