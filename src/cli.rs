@@ -13,16 +13,18 @@ pub fn cli_command() -> Result<ExplorerCommand> {
         .author(crate_authors!())
         .about(crate_description!())
         .setting(AppSettings::SubcommandRequiredElseHelp)
-        .arg(Arg::with_name("verbose")
-             .short("v")
-             .global(true))
+//        .arg(Arg::with_name("verbose")
+//             .short("v")
+//             .global(true))
         .subcommand(SubCommand::with_name("search")
+            .display_order(10)
             .about("fulltext search for an acs table")
             .alias("s")
             .arg(Arg::with_name("search_tables")
                 .takes_value(true)
                 .help("enter text to search for")))
         .subcommand(SubCommand::with_name("describe")
+            .display_order(20)
             .about("Get information about a specific table")
             .alias("d")
             .arg(Arg::with_name("describe_table")
@@ -38,9 +40,10 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .long("raw")
                 .help("format results as raw data from api")))
         .subcommand(SubCommand::with_name("refresh")
+            .display_order(30)
             .about("refresh all years and estimates of acs data summaries"))
         .after_help("fulltext search (`search` table subcommand):\n\
-            \t- Currently exact match.\n
+            \t- Currently implemented to use exact match.\n\
             \t- Case insensitive.\n\
             \t- Searches table name, and table id (no prefix or suffix). ")
         .get_matches();
