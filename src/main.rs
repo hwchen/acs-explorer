@@ -28,7 +28,6 @@
 extern crate clap;
 #[macro_use]
 extern crate error_chain;
-extern crate fst;
 extern crate json;
 #[macro_use]
 extern crate nom;
@@ -42,7 +41,7 @@ mod census;
 mod error;
 mod explorer;
 
-use cli::{cli_command, Command};
+use cli::{cli_command, Command, ExplorerCommand};
 use error::*;
 use explorer::Explorer;
 // TODO move formatting to another module.
@@ -58,6 +57,7 @@ use acs::{
 
 use std::env;
 use std::fs;
+use std::io;
 use std::path::{PathBuf};
 use std::process;
 
@@ -99,12 +99,34 @@ fn run() -> Result<()> {
     let mut explorer = Explorer::new(
         "acs_key".to_owned(),
         db_path,
-    ).unwrap();
+    )?;
 
+    match exec_command(&mut explorer, command) {
+        Err(Error(ErrorKind::Rusqlite(_), _)) => {
+            println!("Database not intialized. Initialize and refresh? y/n");
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            let input = input.trim();
+
+            if input == "y" || input == "yes" {
+                exec_command(&mut explorer, ExplorerCommand {
+                    command: Command::Refresh,
+                    verbose: true
+                })
+            } else {
+                Ok(())
+            }
+
+        },
+        x => x,
+    }
+}
+
+fn exec_command(explorer: &mut Explorer, explorer_command: ExplorerCommand) -> Result<()> {
     let current_year = time::now().tm_year + 1900;
 
     use Command::*;
-    match command.command {
+    match explorer_command.command {
         Refresh => {
             println!("Refreshing...");
 
