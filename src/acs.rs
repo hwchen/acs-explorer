@@ -39,8 +39,8 @@ pub fn parse_table_record(input: &[u8]) -> IResult<&[u8], TableRecord> {
     )
 }
 
-named!(parse_table_code<&[u8], TableCode>,
-    do_parse!(
+pub fn parse_table_code(input: &[u8]) -> IResult<&[u8], TableCode> {
+    do_parse!(input,
         prefix: parse_prefix >>
         table_id: parse_table_id >>
         suffix: parse_suffix >>
@@ -51,7 +51,21 @@ named!(parse_table_code<&[u8], TableCode>,
                 suffix: suffix,
         })
     )
-);
+}
+
+pub fn parse_table_code_only(input: &[u8]) -> IResult<&[u8], TableCode> {
+    do_parse!(input,
+        prefix: parse_prefix >>
+        table_id: parse_table_id >>
+        suffix: alt_complete!(parse_suffix | value!(None)) >>
+
+        (TableCode {
+                prefix: prefix,
+                table_id: table_id,
+                suffix: suffix,
+        })
+    )
+}
 
 named!(parse_prefix<&[u8], TablePrefix>,
     do_parse!(
@@ -635,6 +649,13 @@ mod tests {
             parse_table_record(input.as_bytes()),
             IResult::Done(&b""[..], expected)
         );
+    }
+
+    #[test]
+    fn test_parse_table_code_only() {
+        let input = "B24126".as_bytes();
+        println!("{:?}", parse_table_code_only(input));
+        panic!();
     }
 }
 

@@ -218,11 +218,16 @@ impl Explorer {
         ) -> Result<String>
     {
         // TODO check year
-        let mut year = year.to_string();
-        year.push_str("/");
+        let mut year_str = year.to_string();
+        year_str.push_str("/");
 
         let url = Url::parse(CENSUS_URL_BASE)?;
-        let url = url.join(&year)?.join(acs_est.url_frag())?.join(VARS_URL)?;
+        let mut url = url.join(&year_str)?;
+        if year >= 2016 {
+            url = url.join("acs/")?;
+        }
+        url = url.join(acs_est.url_frag())?.join(VARS_URL)?;
+        //println!("{}", url);
 
         let mut resp = self.http_client.get(url).send()?;
 
@@ -267,6 +272,10 @@ impl Explorer {
             // currently panic on incomplete.
             // to_full_result() doesn't, but returns IError which
             // doesn't implement Error
+            if ["LSAD_NAME", "GEO_ID"].contains(&acs_var_str.as_str()) {
+                continue;
+            }
+
             let code = parse_variable_code(acs_var_str.as_bytes())
                 .to_result()
                 .chain_err(|| format!("Error parsing variable {}", acs_var_str))?;
@@ -306,9 +315,17 @@ impl Explorer {
             // Read table code into est_vars_map (local) for writing
             // into db at end of this fn.
             let table_str = acs_info["concept"].to_string();
-            let table_record = parse_table_record(table_str.as_bytes())
+            let table_record = if year <= 2015 {
+                parse_table_record(table_str.as_bytes())
                 .to_result()
-                .chain_err(|| format!("Error parsing table str {}", table_str))?;
+                .chain_err(|| format!("Error parsing table str {}", table_str))
+            } else {
+                Ok(TableRecord {
+                    code: parse_table_code_only(acs_info["group"].to_string().as_bytes())
+                        .to_result().chain_err(|| format!("Error parsing table code"))?,
+                    label: table_str,
+                })
+            }?;
 
             // Can I get rid of this clone? Probably, but
             // more complicated. The HashSet only lives to
