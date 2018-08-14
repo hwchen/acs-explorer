@@ -1,5 +1,7 @@
 ## ACS explorer, cli
 
+BREAKING CHANGE: v0.2.0 no longer inserts the `E` value after table ids in etl config.
+
 A small utility to examine the metadata of ACS tables and vars.
 
 The ACS is a survey of United States demographics run by the Census Bureau. [American Community Survey](https://www.census.gov/programs-surveys/acs/)
