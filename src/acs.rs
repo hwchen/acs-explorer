@@ -566,7 +566,9 @@ pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>, etl_co
         ));
 
         for record in records {
-            let label = record.label.replace(":!!", "_").replace("'", "");
+            let pattern = if min_year < 2016 { ":!!" } else { "!!" };
+
+            let label = record.label.replace(pattern, "_").replace("'", "");
             let label = to_camelcase(&label);
 
             let indents = indents.repeat(2);
