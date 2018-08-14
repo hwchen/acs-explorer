@@ -35,6 +35,11 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 .long("etl")
                 .conflicts_with("raw")
                 .help("format results to etl config"))
+            .arg(Arg::with_name("etl_config_all")
+                .short("a")
+                .long("all")
+                .requires("etl_config")
+                .help("format results to etl config with all vars"))
             .arg(Arg::with_name("raw")
                 .short("r")
                 .long("raw")
@@ -70,6 +75,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
             if sub_m.is_present("verbose") { verbose = true; }
 
             let etl_config = sub_m.is_present("etl_config");
+            let etl_config_all = sub_m.is_present("etl_config_all");
             let raw = sub_m.is_present("raw");
 
             let query = sub_m
@@ -91,6 +97,7 @@ pub fn cli_command() -> Result<ExplorerCommand> {
                 command: Command::DescribeTable {
                     query: query,
                     etl_config: etl_config,
+                    etl_config_all: etl_config_all,
                     raw: raw,
                 },
                 verbose: verbose,
@@ -121,6 +128,7 @@ pub enum Command {
     DescribeTable {
         query: TableIdQuery,
         etl_config: bool,
+        etl_config_all: bool,
         raw: bool,
     },
 }

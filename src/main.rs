@@ -148,7 +148,7 @@ fn exec_command(explorer: &mut Explorer, explorer_command: ExplorerCommand) -> R
             println!("{}", out);
         },
 
-        DescribeTable{ ref query, etl_config, raw} => {
+        DescribeTable{ ref query, etl_config, etl_config_all, raw } => {
             // prefix checked to be Some already, so can unwrap
             let records = explorer.describe_table(
                 query.prefix.as_ref().unwrap(),
@@ -172,7 +172,7 @@ fn exec_command(explorer: &mut Explorer, explorer_command: ExplorerCommand) -> R
 
             // from cli, etl_config and raw are guaranteed to not both be true at same time.
             let mut out = if etl_config {
-                format_etl_config(current_year as u32, records)
+                format_etl_config(current_year as u32, records, etl_config_all)
             } else if raw {
                 format_describe_table_raw(current_year as u32, records)
             } else {

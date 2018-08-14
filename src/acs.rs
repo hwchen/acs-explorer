@@ -509,7 +509,7 @@ pub fn format_describe_table_pretty(current_year: u32, records: Vec<VariableReco
 
 // TODO move all this processing into sql query
 // or at least refactor with format_describe
-pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>) -> String {
+pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>, etl_config_all: bool) -> String {
     let versions = get_table_versions(current_year, records);
 
     let indents = "    ";
@@ -532,8 +532,12 @@ pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>) -> Str
         let records = records.into_iter().filter(|record| {
             let last = record.label.len();
 
-            &record.label.as_bytes()[last-1..] != &b":"[..] &&
-            record.code.var_type == VariableType::Value
+            if etl_config_all {
+                record.code.var_type == VariableType::Value
+            } else {
+                &record.label.as_bytes()[last-1..] != &b":"[..] &&
+                record.code.var_type == VariableType::Value
+            }
         });
 
 
