@@ -1,6 +1,7 @@
 ## ACS explorer, cli
 
 BREAKING CHANGE: v0.2.0 no longer inserts the `E` value after table ids in etl config.
+FIX BUT: v0.3.0 properly formats 2016+ BUT for etl purposes there is no information on whether label is terminal hierarchy or not.
 
 A small utility to examine the metadata of ACS tables and vars.
 
