@@ -14,7 +14,9 @@ In the future, I may implement a feature to allow direct selection of a table fr
 
 ## Installation
 
-The acs explorer is written in rust. Currently, the only way to install is to build from source, so you must have Rust installed. I suggest [Rustup](https://rustup.rs). Then:
+Binaries for linux and osx are available on the releases page.
+
+For building from source, you need Rust. I suggest [Rustup](https://rustup.rs). Then:
 
 ```
 $ git clone https://github.com/hwchen/acs-explorer.git
