@@ -478,17 +478,33 @@ pub fn format_describe_table_pretty(current_year: u32, records: Vec<VariableReco
             // format label by only showing the last part of label,
             // with appropriate indentation
 
+            let pattern = if min_year < 2016 {
+                ":!!"
+            } else {
+                "!!"
+            };
+
             // find index to slice at
-            let split_index = match record.label.rfind(":!!") {
-                Some(i) => i + 3,
+            let split_index = match record.label.rfind(pattern) {
+                Some(i) => i + pattern.len(),
                 None => 0,
             };
 
             let (indents, label) = record.label.split_at(split_index);
 
             // There's an extra :!! at the end of indents. So
-            // skip1
-            let indents: String = indents.split(":!!").skip(1)
+            // skip1.
+            //
+            // There's also an extra Estimate at the beginning
+            // so skip 2
+
+            let skip = if min_year < 2016 {
+                1
+            } else {
+                2
+            };
+
+            let indents: String = indents.split(pattern).skip(skip)
                 .map(|_| indent)
                 .collect();
 
