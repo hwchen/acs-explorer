@@ -566,18 +566,13 @@ pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>, etl_co
         ));
 
         for record in records {
-            let mut code = Vec::new();
-            code.push(record.code.column_id);
-            code.push(record.code.var_type.to_string());
-            let code = code.concat();
-
             let label = record.label.replace(":!!", "_").replace("'", "");
             let label = to_camelcase(&label);
 
             let indents = indents.repeat(2);
             res.push_str(&format!("{}{}: {:?}\n",
                 indents,
-                code,
+                record.code.column_id,
                 label,
             )[..]);
         }
