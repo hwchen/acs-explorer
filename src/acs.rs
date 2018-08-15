@@ -501,7 +501,9 @@ pub fn format_describe_table_pretty(current_year: u32, records: Vec<VariableReco
             let skip = if min_year < 2016 {
                 1
             } else {
-                2
+                // because need to skip Estimate and Total at front
+                // of label
+                3
             };
 
             let indents: String = indents.split(pattern).skip(skip)
@@ -589,8 +591,14 @@ pub fn format_etl_config(current_year: u32, records: Vec<VariableRecord>, etl_co
                     Some(i) => i + 2,
                     None => 0,
                 };
-                let (_, good_label) = record.label.split_at(split_index);
-                good_label.to_owned()
+
+                let (_, mut good_label) = record.label.split_at(split_index);
+                // ugh, have to remove Total from beginning of each
+                if record.code.column_id != "001" {
+                    good_label.to_owned().replace("Total!!", "")
+                } else {
+                    good_label.to_owned()
+                }
             } else {
                 record.label
             };
